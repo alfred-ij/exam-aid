@@ -9,3 +9,4 @@
 *.Rmd
 *.html
 *.nb
+.DS_Store
