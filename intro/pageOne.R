@@ -2,13 +2,11 @@ library(dplyr) #df manipulation
 library(ggplot2) #plotting 
 library(tidyverse) #df manipulation
 library(methods) # class structure
-library(Dict) #dictionary
 library(latex2exp) #latex text
 library(tinsel) #decorator functions
 library(tidyr) #df manipulation
 library(SciViews) #logarithm function
-
-source('~/Library/Mobile Documents/com~apple~CloudDocs/Documents/mini/projects/soaFAM/R/discreteProbs.R')
+source('~/Library/Mobile Documents/com~apple~CloudDocs/Documents/mini/projects/soaFAM/R/discreteProbs.R') #actuarial functions
 
 pageOne <- setRefClass('pageOne', #underlying computations for the first page of the fam-l dashboard
                        fields=list(x='numeric',
