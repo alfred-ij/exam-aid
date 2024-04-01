@@ -10,3 +10,5 @@
 *.html
 *.nb
 .DS_Store
+.Renviron
+.Rproj.user
