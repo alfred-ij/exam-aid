@@ -1,0 +1,22 @@
+---
+title: "soa_fam_l_intro"
+output: html_notebook
+---
+
+```{r}
+#libraries
+library(dplyr) #df manipulation
+library(ggplot2) #plotting 
+library(tidyverse) #df manipulation
+library(methods) # class structure
+library(Dict) #dictionary
+library(latex2exp) #latex text
+library(tinsel) #decorator functions
+library(tidyr) #df manipulation
+source('~/Library/Mobile Documents/com~apple~CloudDocs/Documents/mini/projects/soaFAM/R/discreteProbs.R')
+source('~/Library/Mobile Documents/com~apple~CloudDocs/Documents/mini/projects/exam_aid/soa_fam_l/intro/pageOne.R')
+```
+
+```{r}
+pageOne$new()$discrete_CL()
+```
