@@ -28,25 +28,6 @@ sidebar <- dashboardSidebar(
 )
 #body...tab defined content
 body <- dashboardBody(
-  tags$head(
-    tags$style(HTML("
-    .centered-row {
-      display: flex;
-      justify-content: center;
-    }
-  "))
-  ),
-  tags$head(
-    tags$style(HTML("
-    .centered-tabBox .description-content {
-      padding: 10px;
-      font-size: 14px;
-      line-height: 1.5;
-      overflow-y: auto;
-      max-height: '50%';
-      box-sizing: border-box;
-    }"))
-  ),
   tags$head( #css for centralizing tabBox
     tags$style(HTML("
         .centered-tabBox {
@@ -55,13 +36,16 @@ body <- dashboardBody(
         }
       "))
   ),
-    tags$head(
+  tags$head(
     tags$style(HTML("
       .box-content {
         display: flex;
         justify-content: center;
         align-items: center;
         height: 100%;
+      }
+      .vis-network {
+        margin: auto;
       }
     "))
   ),
@@ -115,15 +99,15 @@ body <- dashboardBody(
             useShinyjs(),  # Initialize shinyjs
             fluidRow(
               tags$div(class = "custom-tabbox",
-                 tags$div(class = "introNote",
-                    actionButton("infoButton", "", icon = icon("comment-dots")))),
+                       tags$div(class = "introNote",
+                                actionButton("infoButton", "", icon = icon("comment-dots")))),
               hidden(div(id = "infoPanel", 
                          HTML("• In the context of explaining the Long-Term Fundamentals of Actuarial Mathematics dashboard using the 5 W's framework, <b>How</b> is used instead of <b>Where</b> because:"),
                          br(),
                          HTML("&emsp; - How addresses the methodology, and techniques used to develop and implement the dashboard; explains the steps, tools, and programming principles applied to create the dashboard; which is essential for understanding the project's execution and functionality."),
                          br(),
                          HTML("&emsp; - Where typically refers to the physical or virtual location where something occurs; in the context of a software tool like a dashboard; 'where' is less relevant because the dashboard is not tied to a specific location but rather to its usage and application context.")
-                         ))),
+              ))),
             div(class = "white-space-mini"),
             fluidRow( # 5 W's explanation and break-down
               class = "centered-tabBox",
@@ -141,7 +125,7 @@ body <- dashboardBody(
                 tabPanel("5. When can this tool be used?", 
                          "This tool can be used at any point in the actuarial learning journey, whether for initial learning, revision, or deepening understanding of specific topics. Its flexibility and adaptability make it a useful resource for ongoing education and professional development in actuarial and data science.")
               )),
-            div(class = "white-space-mini"),
+            div(class = "white-space"),
             h3(
               class = "left-h4",
               tagList(
@@ -224,16 +208,18 @@ body <- dashboardBody(
                   ),
                   class = "heading-with-icon"
                 ),
-                div(class = "white-space-mini"),
                 fluidRow(
                   class = "centered-tabBox",
-                  width = 12,
-                  height = "300px",
-                  visNetworkOutput("briefHistory_flowchart", height = "300px",width = '70%'),
-                  column(
-                    width = 8,
-                    htmlOutput("briefHistory_nodeDescription"))),
-                div(class = "white-space-mini"),
+                  uiOutput("dynamic_flowchart"),
+                  box(
+                    width=5, height = 350,
+                    title = "Node Description",
+                    status = "warning",
+                    solidHeader = TRUE,
+                    collapsible = TRUE,
+                    htmlOutput("node_description")
+                  )),
+                div(class = "white-space"),
                 h3(
                   class = "left-h4",
                   tagList(
@@ -312,7 +298,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           tabBox(
@@ -322,7 +308,7 @@ body <- dashboardBody(
                             tabPanel("Term-Life","Offers coverage for a specified period (e.g., 10, 20, or 30 years). It is typically more affordable than whole life insurance and does not accumulate cash value."),
                             tabPanel("Endowment","Pays out a lump sum either on the insured's death or after a specified period. It combines elements of savings and protection.")
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "History of Traditional Contracts",
@@ -330,7 +316,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           box(
@@ -338,7 +324,7 @@ body <- dashboardBody(
                             width = 10,status='warning',
                             "19th Century: These products were developed to meet the growing demand for financial protection and savings mechanisms. The establishment of life insurance companies and the use of life tables allowed for more accurate pricing and risk assessment."
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "Evolution of Traditional Contracts",
@@ -346,7 +332,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           box(
@@ -365,7 +351,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           tabBox(
@@ -375,7 +361,7 @@ body <- dashboardBody(
                             tabPanel("Variable Life","Allows policyholders to invest the cash value in various investment options, such as stocks and bonds. This can potentially yield higher returns, though it also comes with higher risk."),
                             tabPanel("Indexed Universal Life","Ties the cash value growth to a stock market index, offering potential for higher returns with some level of protection against market downturns.")
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "History of Modern Contracts",
@@ -383,7 +369,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           box(
@@ -391,7 +377,7 @@ body <- dashboardBody(
                             width = 10, status='warning',
                             "Late 20th Century: The development of universal and variable life insurance products was driven by the need for more flexible financial solutions that could adapt to changing economic conditions and personal financial situations."
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "Evolution to Modern Contracts",
@@ -399,7 +385,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           box(
@@ -418,7 +404,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           tabBox(
@@ -427,7 +413,7 @@ body <- dashboardBody(
                             tabPanel("Long-Term Care","Covers the cost of long-term care services, such as nursing home care, home health care, and assisted living. It addresses the financial risks associated with extended care needs."),
                             tabPanel("Disablility","Provides income replacement if the policyholder becomes unable to work due to a disability. It helps maintain financial stability during periods of disability.")
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "History of Long-Term Health Contracts",
@@ -435,7 +421,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           box(
@@ -443,7 +429,7 @@ body <- dashboardBody(
                             width = 10,status='warning',
                             "Late 20th Century: The growing recognition of the financial risks associated with aging and disability led to the development and expansion of long-term care and disability insurance products."
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "Evolution from Traditional Long-Term Health Contracts",
@@ -451,7 +437,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           box(
@@ -470,7 +456,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           tabBox(
@@ -480,7 +466,7 @@ body <- dashboardBody(
                             tabPanel("Types","Can include both traditional and modern life insurance products."),
                             tabPanel("Historical Context","Mutual insurance companies were among the earliest forms of insurance providers, emphasizing policyholder ownership and benefits.")
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "Proprietary Insurance Contracts",
@@ -488,7 +474,7 @@ body <- dashboardBody(
                           ),
                           class = "heading-with-icon"
                         ),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         fluidRow(
                           class = "centered-tabBox",
                           tabBox(
@@ -498,100 +484,24 @@ body <- dashboardBody(
                             tabPanel("Types","Can include both traditional and modern life insurance products."),
                             tabPanel("Historical Context","Proprietary insurance companies emerged to attract investment capital and expand market offerings.")
                           )),
-                        div(class = "white-space-mini"),
+                        div(class = "white-space"),
                         h2(
                           tagList(
                             "Relationship Between Mutual and Proprietary Contracts",
                             icon("section",class = "pull-left")
                           )),
-                          div(class = "white-space-mini"),
-                          fluidRow(
-                            class = "centered-tabBox",
-                            box(
-                              title = "Mutual and Proprietary Contracts",
-                              width = 10,status='warning',
-                              "Both mutual and proprietary insurance companies offer similar products, but their ownership structures and profit distribution methods differ. Mutual insurers focus on policyholder benefits, while proprietary insurers aim to balance policyholder and shareholder interests."
-                            ))
+                        div(class = "white-space"),
+                        fluidRow(
+                          class = "centered-tabBox",
+                          box(
+                            title = "Mutual and Proprietary Contracts",
+                            width = 10,status='warning',
+                            "Both mutual and proprietary insurance companies offer similar products, but their ownership structures and profit distribution methods differ. Mutual insurers focus on policyholder benefits, while proprietary insurers aim to balance policyholder and shareholder interests."
+                          ))
                       ),
                       tabPanel(
-                        "§2.1.5: insurance contract underwriting",
-                        div(class = "white-space-mini"),
-                        h2(
-                          tagList(
-                            "Underwriting Process",
-                            icon("section",class = "pull-left")
-                          )),
-                        div(class = "white-space-mini"),
-                        fluidRow(
-                          class = "centered-tabBox",
-                          tabBox(
-                            title = tagList(shiny::icon("pen-nib"), "The 5 W's of Underwriting"),
-                            id = "insurableIntro", height = "100px", side = 'left', width = 12,
-                            tabPanel("1. What is underwriting?", 
-                                     "Underwriting involves multiple stakeholders within an insurance company. The primary individuals involved are underwriters, who assess the risk of insuring applicants. Other key participants include medical professionals who provide health evaluations, actuarial teams who help in risk assessment and pricing, and insurance agents who gather initial applicant information."
-                            ),
-                            tabPanel("2. When is underwriting relevant?", 
-                                     "Underwriting occurs after an insurance application is submitted but before the policy is issued. It is a critical step in the insurance process, ensuring that the insurance company can manage its risk effectively. The specific timeline can vary, but underwriting is typically done within a few weeks of receiving the application."
-                            ),
-                            tabPanel("3. Where does underwriting happen?", 
-                                     "Underwriting is conducted within insurance companies, specifically within their underwriting departments. With the advent of technology, some aspects of underwriting can now be done remotely or through automated systems. Additionally, medical underwriting may involve clinics and laboratories where applicants undergo health evaluations and testing."
-                            ),
-                            tabPanel("4. Why is underwriting important?", 
-                                     "The primary purpose of underwriting is to protect the insurance company from taking on excessive risk, which could lead to financial losses. By carefully evaluating each applicant, underwriters ensure that the premiums collected are adequate to cover potential claims. This process helps maintain the financial stability of the insurance company and allows it to offer competitive rates to its policyholders."
-                            ),
-                            tabPanel("5. Who is involved in underwriting?", 
-                                     "Underwriting involves multiple stakeholders within an insurance company. The primary individuals involved are underwriters, who assess the risk of insuring applicants. Other key participants include medical professionals who provide health evaluations, actuarial teams who help in risk assessment and pricing, and insurance agents who gather initial applicant information."
-                            )
-                          )
-                        ),
-                        div(class = "white-space-mini"),
-                        fluidRow(
-                          class = "centered-tabBox",
-                          tabBox(
-                            title = tagList(shiny::icon("pen-nib"), "How Underwriting Works"),
-                            id = "insurableIntro", height = "100px", side = 'left', width = 12,
-                            tabPanel("1. Application Submission", 
-                                     "The applicant submits a detailed application form, providing personal, medical, and financial information."
-                            ),
-                            tabPanel("2. Medical Underwriting", 
-                                     HTML("<b>Medical History: </b>"),"Reviewing medical records and health questionnaires.",
-                                     br(),
-                                     HTML("<b>Examinations: </b>"),"Conducting physical exams, blood tests, and other medical evaluations as necessary.",
-                                     br(),
-                                     HTML("<b>Specialist Reports: </b>"),"Obtaining reports from medical specialists if required."
-                            ),
-                            tabPanel("3. Financial Underwriting", 
-                                     HTML("<b>Income Verification: </b>"),"Assessing the applicant's income and financial stability.",
-                                     br(),
-                                     HTML("<b>Lifestyle Factors: </b>"),"Evaluating factors such as smoking, alcohol consumption, and hazardous activities."
-                            ),
-                            tabPanel("4. Risk Classification", 
-                                     "Classifying the applicant into risk categories (e.g., preferred, standard, substandard) based on the underwriting assessment."
-                            ),
-                            tabPanel("5. Premium Calculation", 
-                                     "Calculating the premium based on the risk classification, policy type, and coverage amount."
-                            ),
-                            tabPanel("6. Policy Issuance", 
-                                     "Issuing the policy with the agreed terms, conditions, and premium rates."
-                            )
-                          )
-                        ),
-                        div(class = "white-space-mini"),
-                        h2(
-                          tagList(
-                            "Brief History of Underwriting",
-                            icon("section",class = "pull-left")
-                          )),
-                        div(class = "white-space-mini"),
-                        fluidRow(
-                          class = "centered-tabBox",
-                          width = 12,
-                          height = "300px",
-                          visNetworkOutput("underwriting_flowchart", height = "300px",width = '70%'),
-                          column(
-                            width = 8,
-                            htmlOutput("underwriting_nodeDescription", class = "description-content"))
-                          )
+                        "§2.1.5: insurance contract risk management",
+                        "risk management!"
                       )
                     )
                   ),
@@ -651,9 +561,9 @@ body <- dashboardBody(
                          'probability distributions intro'
                 ),
                 tabPanel('§2: force of mortality',
-                           sidebarPanel(
-                             sliderInput("age", "life age (x)", 1, 130, 65)
-                           )
+                         sidebarPanel(
+                           sliderInput("age", "life age (x)", 1, 130, 65)
+                         )
                 ),
                 tabPanel('§3: curtate future life-time',
                          sidebarPanel(
@@ -706,63 +616,38 @@ body <- dashboardBody(
 
 #ui...header || sidebar || body...accumulate dashboard components
 ui <- dashboardPage(
-    header,
-    sidebar,
-    body
+  header,
+  sidebar,
+  body
 )
 
 #server...input || output...accumulate server objects
 server <- function(input, output) { 
-  briefHistory_nodes <- data.frame(
+  nodes <- data.frame(
     id = 1:7,
     label = c("Ancient Origins","17th Century","18th Century","19th Century","20th Century","21st Century","Today"),
-    description = c("• <b>Early Beginnings: The Foundations of Actuarial Science</b> <br>
-                    &emsp; - The origins of actuarial science can be traced back to ancient civilizations where early forms of risk management and insurance practices were developed. These practices included pooling resources to mitigate the effects of risks like natural disasters and trade losses. <br>
-                    &emsp; - <b>Early Risk Management:</b> Communities and merchants pooled resources to share the burden of losses from natural disasters and trade. <br>
-                    &emsp; - <b>Ancient Practices:</b> The Code of Hammurabi and Roman burial societies are early examples of risk management and mutual aid practices.",
-                    
-                    "• <b>Development of Probability Theory</b> <br>
-                    &emsp; - The foundation of actuarial science was significantly influenced by the development of probability theory. Mathematicians like Blaise Pascal and Pierre de Fermat laid the groundwork for understanding risk and uncertainty. <br>
-                    &emsp; - <b>Mathematical Foundations:</b> Probability theory allowed for the systematic quantification of risk, essential for developing insurance and financial products. <br>
-                    &emsp; - <b>Influential Mathematicians:</b> Blaise Pascal and Pierre de Fermat were pioneers in probability theory, which is crucial for actuarial calculations.",
-                    
-                    "• <b>Establishment of Life Tables</b> <br>
-                    &emsp; - Edmund Halley created the first life table in 1693, providing a systematic way to estimate the probability of death at various ages. This was a crucial development for life insurance. <br>
-                    &emsp; - <b>Mortality Analysis:</b> Life tables enabled insurers to estimate life expectancy and set premiums accurately. <br>
-                    &emsp; - <b>Halley's Contribution:</b> Edmund Halley's life table was a major milestone, forming the basis for modern actuarial science.",
-                    
-                    "• <b>Formation of Actuarial Societies & Advancements in Mathematics</b> <br>
-                    &emsp; - The Institute of Actuaries was established in London in 1848, and the Actuarial Society of America was founded in 1889. These organizations played a critical role in formalizing actuarial education and professional standards. <br>
-                    &emsp; - <b>Professionalization:</b> The formation of actuarial societies formalized the profession, setting standards for practice and education. <br>
-                    &emsp; - <b>Mathematical Techniques:</b> Actuaries began using more sophisticated mathematical techniques to model and predict risks, including compound interest theory.",
-                    
-                    "• <b>Expansion of Actuarial Science & Regulatory Developments</b> <br>
-                    &emsp; - The actuarial profession expanded beyond life insurance to include pensions, health insurance, and general insurance. The adoption of computers and software allowed for more complex modeling and data analysis. <br>
-                    &emsp; - <b>Broader Applications:</b> Actuaries applied their skills to new areas such as pensions and health insurance. <br>
-                    &emsp; - <b>Technological Integration:</b> Computers and software facilitated advanced modeling and data analysis. <br>
-                    &emsp; - <b>Regulatory Frameworks:</b> Increased regulation ensured the protection of policyholders and the stability of financial systems.",
-                    
-                    "• <b>Integration of Technology, Broader Applications, & Professional Development</b> <br>
-                    &emsp; - The use of big data, machine learning, and predictive analytics has revolutionized the actuarial profession. Actuaries now use these tools to analyze vast amounts of data, improve risk assessment, and develop new insurance products. <br>
-                    &emsp; - <b>Technological Advancements:</b> Big data and machine learning have enhanced risk assessment and product development. <br>
-                    &emsp; - <b>Broader Fields:</b> Actuarial science now includes enterprise risk management (ERM) and financial risk management. <br>
-                    &emsp; - <b>Continuous Education:</b> Organizations like the Society of Actuaries (SOA) and the Casualty Actuarial Society (CAS) ensure ongoing professional development and high standards through rigorous exams and certification.",
-                    
-                    "• <b>Current State of the Profession</b> <br>
-                    &emsp; - Actuaries are essential in various industries, providing expertise in risk assessment, financial modeling, and strategic planning. They continue to adapt to emerging risks such as cyber threats, climate change, and evolving regulatory landscapes. <br>
-                    &emsp; - <b>Modern Challenges:</b> Actuaries address new risks like cyber threats and climate change. <br>
-                    &emsp; - <b>Strategic Role:</b> Actuaries play a crucial role in strategic decision-making and advising businesses on risk management."),
+    description = c("• Early Beginnings: <br> &emsp; - The origins of actuarial science can be traced back to ancient civilizations where early forms of risk management and insurance practices were developed. These practices included pooling resources to mitigate the effects of risks like natural disasters and trade losses.", 
+                    "• Development of Probability Theory: <br> &emsp; - The foundation of actuarial science was significantly influenced by the development of probability theory. Mathematicians like Blaise Pascal and Pierre de Fermat laid the groundwork for understanding risk and uncertainty.", 
+                    "• Establishment of Life Tables: <br> &emsp; - Edmund Halley created the first life table in 1693, which provided a systematic way to estimate the probability of death at various ages. This was a crucial development for life insurance.", 
+                    "• Formation of Actuarial Societies & Advancements in Mathematics: <br> &emsp; - The Institute of Actuaries was established in London in 1848, and the Actuarial Society of America was founded in 1889. These organizations played a critical role in formalizing actuarial education and professional standards. Actuaries began using more sophisticated mathematical techniques to model and predict risks. The development of compound interest theory and its application to life contingencies was significant.", 
+                    "• Expansion of Actuarial Science & Regulatory Developments: <br> &emsp; - The actuarial profession expanded beyond life insurance to include pensions, health insurance, and general insurance. The adoption of computers and software allowed for more complex modeling and data analysis. Increased regulation and standardization occurred in the insurance industry to protect policyholders and ensure financial stability. Acts like the Employee Retirement Income Security Act (ERISA) in the United States provided guidelines for pension plans.",
+                    "• Integration of Technology, Broader Applications, & Professional Development: <br> &emsp; - The use of big data, machine learning, and predictive analytics has revolutionized the actuarial profession. Actuaries now use these tools to analyze vast amounts of data, improve risk assessment, and develop new insurance products. Actuarial science has expanded into fields such as enterprise risk management (ERM) and financial risk management. Actuaries are increasingly involved in strategic decision-making and advising businesses on managing a wide range of risks. Continuous professional education and certification remain critical. Organizations like the Society of Actuaries (SOA) and the Casualty Actuarial Society (CAS) provide rigorous exams and credentialing to ensure high standards within the profession.",
+                    "• Current State of the Profession: <br> &emsp; - Actuaries are essential in various industries, providing expertise in risk assessment, financial modeling, and strategic planning. They continue to adapt to emerging risks such as cyber threats, climate change, and evolving regulatory landscapes."),
     shape = "icon",
     icon.face = 'FontAwesome',
     icon.code = c("f251", "f6f0", "f21a", "f238", "f072","f5e7","f253"),
     icon.size = 40,
     icon.color = c("red", "green", "brown", "purple", "orange","blue","black")
   )
+  edges <- data.frame(from = c(1, 2, 3, 4, 5, 6), to = c(2, 3, 4, 5, 6, 7))
   
-  briefHistory_edges <- data.frame(from = c(1, 2, 3, 4, 5, 6), to = c(2, 3, 4, 5, 6, 7))
+  output$dynamic_flowchart <- renderUI({
+    # Use renderVisNetwork inside renderUI to dynamically create the graph
+    visNetworkOutput("flowchart", height = "100%", width = "100%")
+  })
   
-  output$briefHistory_flowchart <- renderVisNetwork({
-    visNetwork(briefHistory_nodes, briefHistory_edges) %>%
+  output$flowchart <- renderVisNetwork({
+    visNetwork(nodes, edges) %>%
       visNodes(shape = "icon", font = list(multi = TRUE)) %>%
       visOptions(highlightNearest = TRUE, nodesIdSelection = FALSE) %>%
       visEdges(arrows = 'to') %>%
@@ -774,10 +659,10 @@ server <- function(input, output) {
       }")
   })
   
-  output$briefHistory_nodeDescription <- renderText({
+  output$node_description <- renderText({
     req(input$current_node_id)
-    briefHistory_selectedNode <- briefHistory_nodes[briefHistory_nodes$id == input$current_node_id, ]
-    paste0("<b> • Node: </b> <br> &emsp; - ", briefHistory_selectedNode$label, br(), briefHistory_selectedNode$description)
+    selected_node <- nodes[nodes$id == input$current_node_id, ]
+    paste0("• Node: <br> &emsp; - ", selected_node$label, br(), selected_node$description)
   }) 
   
   observeEvent(input$infoButton, {
@@ -787,61 +672,6 @@ server <- function(input, output) {
   observeEvent(input$infoButton, {
     toggle("insurablePanel")  # Toggle the visibility of the infoPanel
   })
-  
-  underwriting_nodes <- data.frame(
-    id = 1:4,
-    label = c("Early Underwriting",
-              "Mid-20th Century",
-              "Late 20th Century",
-              "21st Century"),
-    description = c("• <b> Early Underwriting: The Foundations of Actuarial Science </b> <br> 
-                    &emsp; - In the early days, underwriting was a manual and labor-intensive process. Actuarial science was in its nascent stages, primarily focused on the development of mortality tables and basic statistical methods to assess risk. <br>
-                    &emsp; - <b>Manual Processes and Personal Judgment:</b> Underwriters relied heavily on personal judgment and experience; thus decisions were made based on limited data, often derived from personal interviews, medical examinations, and historical records. <br>
-                    &emsp; - <b>Early Actuarial Tools:</b> Actuaries used rudimentary mortality tables and simple statistical tools to assist in risk assessment; thus the accuracy of these methods was constrained by the limited data available and the manual nature of calculations.", 
-                    "• <b> Mid-20th Century: The Rise of Statistical Methods and Early Technology </b> <br> 
-                    &emsp; - The mid-20th century saw significant advancements in statistical methods and the initial integration of technology into underwriting processes. <br>
-                    &emsp; - <b>Introduction of Statistical Methods:</b> Actuaries began to develop more sophisticated statistical models, incorporating factors such as age, gender, and occupation; thus improving the accuracy of risk assessments but still required significant manual effort.<br>
-                    &emsp; - <b>Early Use of Technology:</b>The introduction of computers in the 1950s and 1960s allowed for more efficient data processing; and underwriting processes began to incorporate computerized systems to store and analyze data, albeit in a limited capacity.<br> 
-                    &emsp; - <b>SOA Contributions:</b>The SOA played a pivotal role in advancing actuarial education and research, promoting the use of statistical methods and emerging technologies in the insurance industry.", 
-                    "• <b> Late 20th Century: Digital Transformation and Predictive Analytics </b> <br> 
-                    &emsp; - The late 20th century marked a transformative period for underwriting, driven by the digital revolution and the advent of predictive analytics. <br>
-                    &emsp; - <b>Digital Transformation:</b> The widespread adoption of digital technologies revolutionized data collection and processing; allowing Insurers to implemente sophisticated software systems to automate underwriting processes, reducing the reliance on manual work.<br>
-                    &emsp; - <b>Emergence of Predictive Analytics:</b>Predictive analytics became a cornerstone of modern underwriting, utilizing large datasets and advanced algorithms to forecast risk; resulting in Actuaries and Data Scientists collaborating to develop models that could predict future claims with greater precision.<br> 
-                    &emsp; - <b>Integration of Medical Technology:</b>Advances in medical technology, such as electronic health records and genetic testing, provided underwriters with more comprehensive and accurate health data; thus allowing for more nuanced risk assessments based on an individual's medical history and genetic predispositions.", 
-                    "• <b> 21st Century: Modern Underwriting and Continuous Innovation </b> <br> 
-                    &emsp; - In the 21st century, underwriting has continued to evolve, embracing continuous innovation in data analytics, automation, and digital technology. <br>
-                    &emsp; - <b>Advanced Data Analytics:</b> Insurers now leverage big data and machine learning algorithms to analyze vast amounts of information, from social media activity to real-time health data from wearable devices; enabling underwriters to assess risk with unprecedented accuracy and granularity.<br>
-                    &emsp; - <b>Automation and Streamlined Processes:</b>Automated underwriting systems handle routine tasks, allowing underwriters to focus on complex cases that require human judgment, which streamlines the underwriting process, reducing turnaround times and operational costs.<br> 
-                    &emsp; - <b>Comprehensive Databases:</b> Insurers maintain extensive databases that integrate data from various sources, including financial records, medical histories, and lifestyle information; to support more informed and holistic risk assessments.<br>
-                    &emsp; - <b>Regulatory and Ethical Considerations:</b>The evolution of underwriting has also been shaped by regulatory and ethical considerations, particularly around data privacy and the use of genetic information; to ensure fair and ethical underwriting practices.<br> 
-                    &emsp; - <b>SOA's Role in Ongoing Development:</b>The SOA continues to contribute to the field through research, professional development, and the dissemination of best practices; supporting actuaries in staying abreast of technological advancements and evolving regulatory landscapes."),
-    shape = "icon",
-    icon.face = 'FontAwesome',
-    icon.code = c("f251", "f6f0", "f21a", "f238"),
-    icon.size = 40,
-    icon.color = c("red", "green", "brown", "purple")
-  )
-  
-  underwriting_edges <- data.frame(from = c(1, 2, 3), to = c(2, 3, 4))
-  
-  output$underwriting_flowchart <- renderVisNetwork({
-    visNetwork(underwriting_nodes, underwriting_edges) %>%
-      visNodes(shape = "icon", font = list(multi = TRUE)) %>%
-      visOptions(highlightNearest = TRUE, nodesIdSelection = FALSE) %>%
-      visEdges(arrows = 'to') %>%
-      visPhysics(stabilization = TRUE) %>%
-      visInteraction(hover = TRUE) %>%  # Enable hover interaction to show tool tips
-      visLayout(randomSeed = 64, hierarchical = TRUE) %>%  # Ensuring the layout is consistent
-      visEvents(selectNode = "function(properties) {
-        Shiny.onInputChange('current_node_id', properties.nodes[0]);
-      }")
-  })
-  
-  output$underwriting_nodeDescription <- renderText({
-    req(input$current_node_id)
-    underwriting_selectedNode <- underwriting_nodes[underwriting_nodes$id == input$current_node_id, ]
-    paste0("<b> • Node: </b> <br> &emsp; - ", underwriting_selectedNode$label, br(), underwriting_selectedNode$description)
-  }) 
 }
 
 #launch app
