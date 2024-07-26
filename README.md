@@ -18,15 +18,15 @@ Using the 5 W's framework (*What*, *Why*, *How*, *Who*, and *When*), this dashbo
 
 ### Catalog
 
-**§2: Insurable Interest**
+#### **§2: Insurable Interest**
   - Definition, application, and identification of long-term life contingent products.
-**§3: Survival Models**
+#### **§3: Survival Models**
   - Covers parametric survival models, life-tables, force of mortality, actuarial notations, and more.
-**§4: Life-Contingent Products**
+#### **§4: Life-Contingent Products**
   - Discusses present value valuation, distribution properties, relationships between various products, and impact of survival models.
-**§5: Policy Values**
+#### **§5: Policy Values**
   - Explores future loss random variable, premium values, net, gross, and modified-net premium policies, and impact of changes in survival models.
-**§6: Notes**
+#### **§6: Notes**
   - Additional notes and resources for further learning.
     
 ## References
