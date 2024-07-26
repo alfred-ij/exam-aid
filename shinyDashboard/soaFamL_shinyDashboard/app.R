@@ -597,14 +597,131 @@ body <- dashboardBody(
                   ),
                   tabPanel(
                     "§2.2: annuity contracts",
-                    "annuties!"
+                    h2(
+                      tagList(
+                        "Brief History of Annuity Contracts",
+                        icon("section",class = "pull-left")
+                      )),
+                    div(class = "white-space-mini"),
+                    fluidRow(
+                      class = "centered-tabBox",
+                      width = 12,
+                      height = "300px",
+                      visNetworkOutput("annuityIntro_flowchart", height = "300px",width = '70%'),
+                      column(
+                        width = 8,
+                        htmlOutput("annuityIntro_nodeDescription", class = "description-content"))
+                    ),
+                    div(class = "white-space-mini"),
+                    h2(
+                      tagList(
+                        "Accrual Process",
+                        icon("section",class = "pull-left")
+                      )),
+                    fluidRow(
+                      width = 10,
+                      class = "centered-tabBox",
+                      box(
+                        title = "Accural Process for Annuity Contracts",
+                        "Annuities are typically acquired through a purchase process involving underwriting to assess the applicant's age, health status, and financial needs. The underwriting process ensures that the annuity is priced accurately based on the risk profile of the individual."
+                      )
+                    )
                   ),
                   tabPanel(
                     "§2.3: pension contracts",
-                    "pensions!"
+                    h2(
+                      tagList(
+                        "Brief History of Pension Contracts",
+                        icon("section",class = "pull-left")
+                      )),
+                    div(class = "white-space-mini"),
+                    fluidRow(
+                      class = "centered-tabBox",
+                      width = 12,
+                      height = "300px",
+                      visNetworkOutput("pensionIntro_flowchart", height = "300px",width = '70%'),
+                      column(
+                        width = 8,
+                        htmlOutput("pensionIntro_nodeDescription", class = "description-content"))
+                    ),
+                    div(class = "white-space-mini"),
+                    h2(
+                      tagList(
+                        "Accrual Process",
+                        icon("section",class = "pull-left")
+                      )),
+                    fluidRow(
+                      width = 10,
+                      class = "centered-tabBox",
+                      box(
+                        title = "Accural Process for Pension Contracts",
+                        "Pension benefits accrue over time based on contributions from both employers and employees. In defined benefit plans, benefits are typically calculated based on a formula considering years of service and salary. In defined contribution plans, benefits depend on the amount contributed and the investment performance of those contributions."
+                      )
+                    )
                   ),
                   tabPanel(
-                    "§2.4: other contracts"
+                    "§2.4: other contracts",
+                    div(class = "white-space "),
+                    h2(
+                      tagList(
+                        "Health and Disability Insurance",
+                        icon("section",class = "pull-left")
+                      )),
+                    fluidRow(
+                      class = "centered-tabBox",
+                      width = 10,
+                      tabBox(
+                        width = 10,
+                        title = 'Health and Disability Insurance',
+                        tabPanel("Brief History",
+                                 tabBox(
+                                   title = "Brief History of Health and Disability Insurance",
+                                   tabPanel(
+                                     "19th Century",
+                                     "Health insurance emerged with mutual aid societies and early commercial policies. These policies were simple and often provided limited coverage for basic medical expenses."
+                                   ),
+                                   tabPanel(
+                                     "20th Century",
+                                     "The expansion of health and disability insurance included the growth of employer-sponsored health plans and the introduction of Medicare and Medicaid. These plans provided more comprehensive coverage and were typically acquired through employers or government programs."
+                                   ),
+                                   tabPanel(
+                                     "21st Century",
+                                     "The 21st century saw significant changes in health insurance, including the Affordable Care Act (ACA) in the United States. The ACA aimed to increase access to health insurance, improve coverage quality, and reduce costs for individuals and families."
+                                   ))
+                        ),
+                        tabPanel("Accural Process",
+                                 "Health and disability insurance policies are typically acquired through an application process involving underwriting to assess the applicant's health status and risk factors. This process ensures that premiums are appropriately priced based on the individual's health and potential for claims.")
+                      )
+                    ),
+                    div(class = "white-space"),
+                    h2(
+                      tagList(
+                        "Long-Term Care Insurance",
+                        icon("section",class = "pull-left")
+                      )),
+                    div(class = "white-space-mini"),
+                    fluidRow(
+                      class = "centered-tabBox",
+                      width = 10,
+                      tabBox(
+                        width = 10,
+                        title = 'Long-Term Care Insurance',
+                        tabPanel("Brief History",
+                                 tabBox(
+                                   title = "Brief History of Long-Term Care Insurance",
+                                   tabPanel(
+                                     "Late 20th Century",
+                                     "Long-term care insurance developed to cover extended care services like nursing home and home health care. These policies were designed to address the financial risks of aging and long-term care needs."
+                                   ),
+                                   tabPanel(
+                                     "21st Century",
+                                     "The market for long-term care insurance has expanded, offering various coverage options and benefit structures. Policies may include features like inflation protection and hybrid products that combine long-term care coverage with life insurance or annuities."
+                                   ))
+                        ),
+                        tabPanel("Accural Process",
+                                 "Long-term care insurance is typically acquired through a detailed application process involving underwriting to assess the applicant's health and long-term care needs. This underwriting process ensures that the policy is priced based on the risk of the individual requiring long-term care services in the future.")
+                      )
+                    )
                   )
                 )
               )
@@ -713,6 +830,7 @@ ui <- dashboardPage(
 
 #server...input || output...accumulate server objects
 server <- function(input, output) { 
+  #----------------------------------------------------briefHistory flowchart----------------------------------------------------
   briefHistory_nodes <- data.frame(
     id = 1:7,
     label = c("Ancient Origins","17th Century","18th Century","19th Century","20th Century","21st Century","Today"),
@@ -779,7 +897,7 @@ server <- function(input, output) {
     briefHistory_selectedNode <- briefHistory_nodes[briefHistory_nodes$id == input$current_node_id, ]
     paste0("<b> • Node: </b> <br> &emsp; - ", briefHistory_selectedNode$label, br(), briefHistory_selectedNode$description)
   }) 
-  
+  #----------------------------------------------------popups...actionButtons----------------------------------------------------
   observeEvent(input$infoButton, {
     toggle("infoPanel")  # Toggle the visibility of the infoPanel
   })
@@ -787,7 +905,7 @@ server <- function(input, output) {
   observeEvent(input$infoButton, {
     toggle("insurablePanel")  # Toggle the visibility of the infoPanel
   })
-  
+  #----------------------------------------------------underwriting flowchart----------------------------------------------------
   underwriting_nodes <- data.frame(
     id = 1:4,
     label = c("Early Underwriting",
@@ -842,6 +960,84 @@ server <- function(input, output) {
     underwriting_selectedNode <- underwriting_nodes[underwriting_nodes$id == input$current_node_id, ]
     paste0("<b> • Node: </b> <br> &emsp; - ", underwriting_selectedNode$label, br(), underwriting_selectedNode$description)
   }) 
+  #----------------------------------------------------annuityIntro flowchart----------------------------------------------------
+  annuityIntro_nodes <- data.frame(
+    id = 1:4,
+    label = c("Ancient Rome","17th Century","18th and 19th Centuries","20th Century to Present"),
+    description = c("• <b>Ancient Rome</b> <br>
+                    &emsp; - The origins of actuarial science can be traced back to ancient civilizations where early forms of risk management and insurance practices were developed. These practices included pooling resources to mitigate the effects of risks like natural disasters and trade losses.",
+                    "• <b>17th Century</b> <br>
+                    &emsp; - The first modern annuity contracts were sold by governments in Europe to raise funds. These contracts were more structured, often involving formal agreements between the government and individuals or institutions.",
+                    "• <b>18th and 19th Centuries</b> <br>
+                    &emsp; - Actuarial methods were developed to price annuities more accurately, using life expectancy tables and probabilistic models. Annuity contracts during this period were typically issued by insurance companies, with pricing based on rigorous actuarial calculations to ensure financial viability.",
+                    "• <b>20th Century to Present</b> <br>
+                    &emsp; - The annuity market has grown, with products such as variable annuities, indexed annuities, and immediate vs. deferred annuities. These contracts are typically acquired through insurance companies, with underwriting processes involving detailed financial and health assessments to determine the appropriate pricing and terms."
+                    ),
+    shape = "icon",
+    icon.face = 'FontAwesome',
+    icon.code = c("f251", "f6f0", "f21a", "f253"),
+    icon.size = 40,
+    icon.color = c("red", "green", "brown", "black")
+  )
+  
+  annuityIntro_edges <- data.frame(from = c(1, 2, 3), to = c(2, 3, 4))
+  
+  output$annuityIntro_flowchart <- renderVisNetwork({
+    visNetwork(annuityIntro_nodes, annuityIntro_edges) %>%
+      visNodes(shape = "icon", font = list(multi = TRUE)) %>%
+      visOptions(highlightNearest = TRUE, nodesIdSelection = FALSE) %>%
+      visEdges(arrows = 'to') %>%
+      visPhysics(stabilization = TRUE) %>%
+      visInteraction(hover = TRUE) %>%  # Enable hover interaction to show tool tips
+      visLayout(randomSeed = 12, hierarchical = TRUE) %>%  # Ensuring the layout is consistent
+      visEvents(selectNode = "function(properties) {
+        Shiny.onInputChange('current_node_id', properties.nodes[0]);
+      }")
+  })
+  
+  output$annuityIntro_nodeDescription <- renderText({
+    req(input$current_node_id)
+    annuityIntro_selectedNode <- annuityIntro_nodes[annuityIntro_nodes$id == input$current_node_id, ]
+    paste0("<b> • Node: </b> <br> &emsp; - ", annuityIntro_selectedNode$label, br(), annuityIntro_selectedNode$description)
+  })
+  #----------------------------------------------------pensionIntro flowchart----------------------------------------------------
+  pensionIntro_nodes <- data.frame(
+    id = 1:3,
+    label = c("19th Century","20th Century","21st Century"),
+    description = c("• <b>19th Century</b> <br>
+                    &emsp; - Employer-sponsored pension plans began to emerge, with companies like American Express and the Pennsylvania Railroad offering pensions. These plans were typically unfunded, with benefits promised based on the employer's financial stability.",
+                    "• <b>20th Century</b> <br>
+                    &emsp; - The expansion of pension plans included the introduction of Social Security in 1935 and ERISA in 1974. These plans became more formalized, with employers and employees contributing to funded plans designed to provide retirement income based on years of service and salary history.",
+                    "• <b>21st Century</b> <br>
+                    &emsp; - The shift from defined benefit to defined contribution plans, such as 401(k) plans, has changed the accrual process. Defined contribution plans involve regular contributions from employers and employees into individual accounts, with the retirement benefit depending on the investment performance of these accounts."
+    ),
+    shape = "icon",
+    icon.face = 'FontAwesome',
+    icon.code = c("f251", "f6f0", "f253"),
+    icon.size = 40,
+    icon.color = c("red", "green", "black")
+  )
+  
+  pensionIntro_edges <- data.frame(from = c(1, 2), to = c(2, 3))
+  
+  output$pensionIntro_flowchart <- renderVisNetwork({
+    visNetwork(pensionIntro_nodes, pensionIntro_edges) %>%
+      visNodes(shape = "icon", font = list(multi = TRUE)) %>%
+      visOptions(highlightNearest = TRUE, nodesIdSelection = FALSE) %>%
+      visEdges(arrows = 'to') %>%
+      visPhysics(stabilization = TRUE) %>%
+      visInteraction(hover = TRUE) %>%  # Enable hover interaction to show tool tips
+      visLayout(randomSeed = 12, hierarchical = TRUE) %>%  # Ensuring the layout is consistent
+      visEvents(selectNode = "function(properties) {
+        Shiny.onInputChange('current_node_id', properties.nodes[0]);
+      }")
+  })
+  
+  output$pensionIntro_nodeDescription <- renderText({
+    req(input$current_node_id)
+    pensionIntro_selectedNode <- pensionIntro_nodes[pensionIntro_nodes$id == input$current_node_id, ]
+    paste0("<b> • Node: </b> <br> &emsp; - ", pensionIntro_selectedNode$label, br(), pensionIntro_selectedNode$description)
+  })
 }
 
 #launch app
