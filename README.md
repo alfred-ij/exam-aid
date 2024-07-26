@@ -8,13 +8,13 @@
 
 ### Prelude
 
-Using the 5 W's framework (What, Why, How, Who, and When), this dashboard clarifies its purpose, scope, and benefits:
+Using the 5 W's framework (*What*, *Why*, *How*, *Who*, and *When*), this dashboard clarifies its purpose, scope, and benefits:
 
-  - What: An examination, study, and learning assistant for actuarial topics, adapted from the latest Society of Actuaries (SOA) syllabus.
-  - Why: Combines traditional actuarial science with modern data science techniques, enhancing comprehension and retention of complex concepts.
-  - How: Implemented through Shiny dashboards, providing an intuitive and user-friendly interface.
-  - Who: Beneficial for actuarial students, educators, and data science enthusiasts.
-  - When: Usable at any point in the actuarial learning journey.
+  - **What:** An examination, study, and learning assistant for actuarial topics, adapted from the latest Society of Actuaries (SOA) syllabus.
+  - **Why:** Combines traditional actuarial science with modern data science techniques, enhancing comprehension and retention of complex concepts.
+  - **How:** Implemented through Shiny dashboards, providing an intuitive and user-friendly interface.
+  - **Who:** Beneficial for actuarial students, educators, and data science enthusiasts.
+  - **When:** Usable at any point in the actuarial learning journey.
 
 ### Catalog
 
