@@ -1,4 +1,4 @@
-# Welcome to the soaFamL branch of the Long-term Fundamentals of Actuarial Mathematics dashboard project! 
+# Welcome to the soaFamL branch for the Long-term Fundamentals of Actuarial Mathematics dashboard project! 
 
 - This repository hosts the development of an interactive dashboard designed to aid actuarial students and professionals in understanding complex actuarial concepts through a modern data science approach.
 
