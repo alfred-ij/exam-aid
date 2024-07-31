@@ -28,7 +28,10 @@ Using the 5 W's framework (*What*, *Why*, *How*, *Who*, and *When*), this dashbo
   - Explores future loss random variable, premium values, net, gross, and modified-net premium policies, and impact of changes in survival models.
 #### **§6: Notes**
   - Additional notes and resources for further learning.
-    
+
+## Project Shiny App Link
+  - [FAM-L Shiny Dashboard](https://14j8a5-alfred0ij.shinyapps.io/soaFamL_shinyDashboard/)
+
 ## References
 
   - The Shiny app developed as a preliminary tool with similar capabilities can be [accessed here](https://alfredijeomah.shinyapps.io/calculator/).
