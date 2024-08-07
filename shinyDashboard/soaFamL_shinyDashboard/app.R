@@ -1,12 +1,353 @@
-#libraries and other sources
+#---------------------------------------------libraries and other sources---------------------------------------------
 library(shiny)
 library(shinydashboard)
 library(visNetwork)
+library(shinyFeedback)
 library(fontawesome)
 library(shinyjs)
-#header...long-term actuarial modeling...custom width
-custom_width <- 325
+library(dplyr) #df manipulation
+library(ggplot2) #plotting 
+library(kableExtra); library(knitr) #knitting
+library(tidyverse) #df manipulation
+library(methods) # class structure
+library(Dict) #dictionary
+library(latex2exp) #latex text
+library(tinsel) #decorator functions
+library(tidyr) #df manipulation
+library(shinycssloaders)
+library(DT)
+library(here)
+source('discreteProbs.R')
+source('discreteProducts.R')
 
+#---------------------------------------------helper functions---------------------------------------------
+plot_survivalDist_info <- function(user_inputs,type,radix=10000,select=2,x_range=list(20,110)){
+  #initialize class object
+  survivalDist_info_object <- discreteProbs$new(
+    age_range = list(0,130), #distribution age limits
+    mort_law = user_inputs['mort_law'], #underlying mortality law
+    frac_asump = user_inputs['frac_asump'], #fraction assumption
+    m = user_inputs['m'], #m-th periodicity
+    other_params = user_inputs['mort_params'] #other parameters
+  )
+  #plot distribution ranges...t_p_x and t_q_x
+  if (type=='whole'){
+    survivalDist_info_plot <- 
+      data.frame(t = user_inputs['t']) %>%
+      mutate(p=sapply(t, survivalDist_info_object$p_x_t, x=user_inputs['x'])) %>%
+      mutate(q=sapply(t, survivalDist_info_object$q_x_t, x=user_inputs['x'])) %>%
+      ggplot() +
+      geom_point(aes(x=t, y=p), color='blue') +
+      geom_point(aes(x=t, y=q), color='red') +
+      labs( 
+        title = paste0('Discrete Survival Distribitions for a Life-Aged (', user_inputs['x'],')'),
+        x = TeX(r'(Discrete Future Period $(t)$)'),
+        y = TeX(r'(Survival Probabilities: $_tp_x$ (blue) and $_tq_x$ (red))'),
+        subtitle = paste0("Based on: ", user_inputs['mort_law'],"'s Law of Mortality for ",user_inputs['t'][1],' till ', tail(user_inputs['t'],1), ' future periods.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) + 
+      scale_colour_manual(values = cols) 
+    #return plot
+    return(survivalDist_info_plot)
+  }else if (type=='frac'){
+    survivalDist_info_plot <- 
+      data.frame(s = as.numeric(seq(0, 0.9, 0.1))) %>%
+      mutate(p=sapply(s, survivalDist_info_object$frac_p_x_s, x=user_inputs['x'], select=FALSE)) %>%
+      mutate(q=sapply(s, survivalDist_info_object$frac_q_x_s, x=user_inputs['x'], select=FALSE)) %>%
+      ggplot() +
+      geom_point(aes(x=s, y=p), color='blue') +
+      geom_point(aes(x=s, y=q), color='red') +
+      labs( 
+        title = paste0('Discrete Survival Distribitions for a Life-Aged (', user_inputs['x'],')'),
+        x = TeX(r'(Discrete Future Period $(t)$)'),
+        y = TeX(r'(Survival Probabilities: $_sp_x$ (blue) and $_sq_x$ (red))'),
+        subtitle = paste0("Based on: ", user_inputs['mort_law'],"'s Law of Mortality"),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) + 
+      scale_colour_manual(values = cols) 
+    #return plot
+    return(survivalDist_info_plot)    
+  }else if (type=='complete'){
+    survivalDist_info_df <- 
+      data.frame(t = 129:(user_inputs['x']+1)) %>%
+      mutate(p=sapply(130-t, survivalDist_info_object$p_x_t, x=user_inputs['x'])) 
+    #compute complete-life variables
+    survivalDist_info_num <- sum(survivalDist_info_df$p)
+    #return plot
+    return(survivalDist_info_num)
+  }else if (type == 'life'){
+    survivalDist_info_plot <- 
+      data.frame(t = user_inputs['t']) %>%
+      mutate(l=sapply(t, survivalDist_info_object$lt_x_t, x=user_inputs['x'], radix=radix)) %>%
+      ggplot() +
+      geom_point(aes(x=t, y=l), color='blue') +
+      labs( 
+        title = paste0('Discrete Life-Table for lives aged (', user_inputs['x']+user_inputs['t'][1],') till (' ,user_inputs['x']+tail(user_inputs['t'],1),')'),
+        x = TeX(r'(Discrete Future Period $(t)$)'),
+        y = TeX(r'(Life-Table Cohort: $l_{(x+t)}$ (blue))'),
+        subtitle = paste0("Based on: ", user_inputs['mort_law'],"'s Law of Mortality for ",user_inputs['t'][1],' till ', tail(user_inputs['t'],1), ' future periods, with a radix of ', radix, '.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) + 
+      scale_colour_manual(values = cols) 
+    #return plot
+    return(survivalDist_info_plot)
+  } else if (type == 'select'){
+    survivalDist_info_plot <- 
+      data.frame(t = user_inputs['t']) %>%
+      mutate(select_p=sapply(t, survivalDist_info_object$select_p_x_t, x=user_inputs['x'], d=select)) %>%
+      mutate(p=sapply(t, survivalDist_info_object$p_x_t, x=user_inputs['x'])) %>%
+      ggplot() +
+      geom_point(aes(x=t, y=select_p), color='red') +
+      geom_point(aes(x=t, y=p), color='blue') +
+      labs( 
+        title = paste0('Discrete Survival Distribitions for a Life-Aged (', user_inputs['x'],')'),
+        x = TeX(r'(Discrete Future Period $(t)$)'),
+        y = TeX(r'(Survival Probabilities: $_tp_x$ (blue) and $_tp_{\[x\]}$ (red))'),
+        subtitle = paste0("Based on: ", user_inputs['mort_law'],"'s Law of Mortality for ",user_inputs['t'][1],' till ', tail(user_inputs['t'],1), ' future periods, with a select period of ', select, '.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) + 
+      scale_colour_manual(values = cols) 
+    #return plot
+    return(survivalDist_info_plot)
+  } else if(type=='ultimate'){
+    d <- select; age_list <- x_range
+    #create data frame with desired life-table values
+    survivalDist_info_plot <- data.frame(age_x=c((age_list[[1]]-d):age_list[[2]])) %>% 
+      #define ultimate period age
+      mutate(!!paste('age+',d,sep=''):=age_x+d) %>% 
+      #define ultimate period life-table value
+      mutate(!!paste('l_x+',d,sep=''):=sapply(!!sym(paste('age+',d,sep='')),
+                                              survivalDist_info_object$lt_x_t,t=0,
+                                              radix=radix,
+                                              x0=age_list[[1]])) 
+    for(select_index in c(1:d)){ 
+      #loop through periods
+      temp_name <- paste(select_index,"_p_[x]",sep='') 
+      #initialize survival feature name
+      survivalDist_info_plot <- survivalDist_info_plot %>%
+        #compute select period survival probabilities
+        mutate(!!temp_name:=sapply(age_x,survivalDist_info_object$select_p_x_t,t=select_index,d=d)) 
+      if (select_index > 1){ #setup period survival probabilities
+        #initialize survival feature name...select-1
+        previous_temp_name <- paste(select_index-1,"_p_[x]",sep='') 
+        #initialize survival feature name...select
+        current_temp_name <- paste(select_index,"_p_[x]",sep='') 
+        #initialize survival feature name...select-1
+        new_p_name <- paste("1_p_[x]+",select_index-1,sep='') 
+        #initialize life-table feature name...select
+        new_l_name <- paste("l_[x]+",select_index-1,sep='') 
+        survivalDist_info_plot <- survivalDist_info_plot %>%
+          #compute survival probabilities
+          mutate(!!new_p_name:= !!sym(current_temp_name) / !!sym(previous_temp_name)) %>% 
+          #compute life-table values
+          mutate(!!new_l_name:= !!sym(paste('l_x+',d,sep=''))/!!sym(new_p_name)) 
+        survivalDist_info_plot[1:d,new_l_name] <- NA
+      }
+      if (select_index == d){
+        #initialize life-table feature name
+        l_name <- 'l_[x]' 
+        survivalDist_info_plot <- survivalDist_info_plot %>%
+          #compute life-table values
+          mutate(!!l_name := !!sym(paste('l_x+',d,sep=''))/!!sym(paste(select_index,"_p_[x]",sep=''))) 
+        survivalDist_info_plot[1:d,l_name] <- NA
+      }
+    }
+    return(survivalDist_info_plot)
+  }
+}
+plot_fom_info <- function(user_inputs){
+  #initialize class object
+  fom_info_object <- discreteProbs$new(
+    age_range = list(0,130), #distribution age limits
+    mort_law = user_inputs['mort_law'], #underlying mortality law
+    frac_asump = user_inputs['frac_asump'], #fraction assumption
+    m = user_inputs['m'], #m-th periodicity
+    other_params = user_inputs['mort_params'] #other parameters
+  )
+  #plot distribution ranges...t_p_x and t_q_x
+  fom_info_plot <- 
+    data.frame(t = user_inputs['t']) %>%
+    mutate(mu=sapply(t, fom_info_object$mu_x_t, x = user_inputs['x'])) %>%
+    mutate(f=sapply(t, fom_info_object$f_x_t, x = user_inputs['x'])) %>%
+    ggplot() +
+    geom_point(aes(x=t, y=mu), color='blue') +
+    labs(
+      title = paste0('Discrete Force of Mortality for a Life-Aged (', user_inputs['x'],')'),
+      x = TeX(r'(Discrete Future Period $(t)$)'),
+      y = TeX(r'(Force of Mortality: $mu_{x+t}$)'),
+      subtitle = paste0("Based on: ", user_inputs['mort_law'],"'s Law of Mortality for ",user_inputs['t'][1],' till ', tail(user_inputs['t'],1), ' future periods.'),
+      color='Life Age (x)'
+    ) +
+    theme_dark() +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    theme(plot.subtitle = element_text(hjust = 0.5)) +
+    scale_colour_manual(values = cols)
+  return(fom_info_plot)
+}
+plot_product_info <- function(user_input,type){
+  #initialize class object
+  product_info_object <- discreteProducts$new(
+    age_range = list(0,130), #distribution age limits
+    mort_law = user_input['mort_law'], #underlying mortality law
+    frac_asump = user_input['frac_asump'], #fraction assumption
+    m = user_input['m'], #m-th periodicity
+    other_params = user_input['mort_params'], #other parameters
+    i = user_input['i'], #interest rate
+    annuity_schedule = user_input['annuity_schedule'] #annuity schedule
+  )
+  
+  if(type=='wholeInsurance'){
+    #plot distribution ranges...t_p_x and t_q_x
+    product_info_plot <- 
+      data.frame(t = user_input['t']) %>%
+      mutate(x_t = t+user_input['x']) %>%
+      mutate(w_A=sapply(x_t, product_info_object$whole_A_x, moment = 1)) %>%
+      ggplot() +
+      geom_point(aes(x=x_t, y=w_A), color='blue') +
+      labs(
+        title = paste0('Discrete Whole Life Insurance'),
+        x = TeX(r'(Discrete Life Ages $(x+t)$)'),
+        y = TeX(r'(Whole Life Insurance: $A_{x+t}$)'),
+        subtitle = paste0("Based on: ", user_input['mort_law'],"'s Law of Mortality for lives aged ",user_input['t'][1]+user_input['x'],' till ', tail(user_input['t'],1)+user_input['x'], '.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) +
+      scale_colour_manual(values = cols)
+    return(product_info_plot)
+  } else if(type == 'termInsurance'){
+    product_info_plot <- 
+      data.frame(t = user_input['t']) %>%
+      mutate(x_t = t+user_input['x']) %>%
+      mutate(t_A=sapply(x_t, product_info_object$term_A_x, moment = 1, n = user_input['n'])) %>%
+      ggplot() +
+      geom_point(aes(x=x_t, y=t_A), color='blue') +
+      labs(
+        title = paste0('Discrete Term Life Insurance'),
+        x = TeX(r'(Discrete Life Ages $(x+t)$)'),
+        y = TeX(r'(Term Life Insurance)'),
+        subtitle = paste0("Based on: ", user_input['mort_law'],"'s Law of Mortality for lives aged ",user_input['t'][1]+user_input['x'],' till ', tail(user_input['t'],1)+user_input['x'], ' with a term period of ',user_input['n'], '.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) +
+      scale_colour_manual(values = cols)
+    return(product_info_plot)
+  } else if(type == 'endowmentInsurance'){
+    product_info_plot <- 
+      data.frame(t = user_input['t']) %>%
+      mutate(x_t = t+user_input['x']) %>%
+      mutate(e_A=sapply(x_t, product_info_object$endowment_A_x, moment = 1, n = user_input['n'])) %>%
+      ggplot() +
+      geom_point(aes(x=x_t, y=e_A), color='blue') +
+      labs(
+        title = paste0('Discrete Endowment Life Insurance'),
+        x = TeX(r'(Discrete Life Ages $(x+t)$)'),
+        y = TeX(r'(Endowment Insurance)'),
+        subtitle = paste0("Based on: ", user_input['mort_law'],"'s Law of Mortality for lives aged ",user_input['t'][1]+user_input['x'],' till ', tail(user_input['t'],1)+user_input['x'], ' with a term period of ',user_input['n'], '.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) +
+      scale_colour_manual(values = cols)
+    return(product_info_plot)
+  }else if(type=='insuranceTable'){
+    product_info_table <- 
+      data.frame(
+        label = c(
+          '\\(A_x\\): Whole Life Insurance',
+          '\\(\\require{enclose} A_{\\acute{x} \\colon \\; \\enclose{actuarial}{n}}\\): Term Life Insurance',
+          '\\(\\require{enclose} A_{x \\colon \\enclose{actuarial}{n}}\\): Endowment Insurance',
+          '\\(_{u|}A_x\\): Deferred Whole Life Insurance',
+          '\\(\\require{enclose} _{u|}A_{\\acute{x} \\colon \\; \\enclose{actuarial}{n}}\\): Deferred Term Life Insurance',
+          '\\(_nE_x \\): Pure Endowment Insurance'
+        ),
+        value = c(
+          product_info_object$whole_A_x(x=user_input['x'],moment=1),
+          product_info_object$term_A_x(x=user_input['x'],n=user_input['n'],moment=1),
+          product_info_object$endowment_A_x(x=user_input['x'],n=user_input['n'],moment=1),
+          product_info_object$deferred_whole_A_x(x=user_input['x'],u=user_input['u'],moment=1),
+          product_info_object$deferred_term_A_x(x=user_input['x'],n=user_input['n'],u=user_input['u'],moment=1),
+          product_info_object$n_E_x(x=user_input['x'],n=user_input['n'])
+        )
+      )
+    return(product_info_table)
+  }else if(type=='wholeAnnuity'){
+    product_info_plot <- 
+      data.frame(t = user_input['t']) %>%
+      mutate(x_t = t+user_input['x']) %>%
+      mutate(w_a=sapply(x_t, product_info_object$whole_a_x)) %>%
+      ggplot() +
+      geom_point(aes(x=x_t, y=w_a), color='blue') +
+      labs(
+        title = paste0('Discrete Whole Life Annuitiy'),
+        x = TeX(r'(Discrete Life Ages $(x+t)$)'),
+        y = TeX(r'(Whole Life Annuity)'),
+        subtitle = paste0("Based on: ", user_input['mort_law'],"'s Law of Mortality for lives aged ",user_input['t'][1]+user_input['x'],' till ', tail(user_input['t'],1)+user_input['x'], '.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) +
+      scale_colour_manual(values = cols)
+    return(product_info_plot)
+  }else if(type=='termAnnuity'){
+    product_info_plot <- 
+      data.frame(t = user_input['t']) %>%
+      mutate(x_t = t+user_input['x']) %>%
+      mutate(t_a=sapply(x_t, product_info_object$term_a_x,n=user_input['n'])) %>%
+      ggplot() +
+      geom_point(aes(x=x_t, y=t_a), color='blue') +
+      labs(
+        title = paste0('Discrete Term Life Annuitiy'),
+        x = TeX(r'(Discrete Life Ages $(x+t)$)'),
+        y = TeX(r'(Term Life Annuity)'),
+        subtitle = paste0("Based on: ", user_input['mort_law'],"'s Law of Mortality for lives aged ",user_input['t'][1]+user_input['x'],' till ', tail(user_input['t'],1)+user_input['x'], ' with a term period of ',user_input['n'], '.'),
+        color='Life Age (x)'
+      ) +
+      theme_dark() +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.subtitle = element_text(hjust = 0.5)) +
+      scale_colour_manual(values = cols)
+    return(product_info_plot)
+  }else if(type=='annuityTable'){
+    product_info_table <- 
+      data.frame(
+        label = c(
+          '\\(\\ddot{a}_x\\): Whole Life Annuity',
+          '\\(\\require{enclose} \\ddot{a}_{\\acute{x} \\colon \\; \\enclose{actuarial}{n}}\\): Term Life Annuity',
+          '\\(_{u|}\\ddot{a}_x\\): Deferred Whole Life Annuity',
+          '\\(\\require{enclose} _{u|}\\ddot{a}_{\\acute{x} \\colon \\; \\enclose{actuarial}{n}}\\): Deferred Term Life Annuity'
+        ),
+        value = c(
+          product_info_object$whole_a_x(x=user_input['x']),
+          product_info_object$term_a_x(x=user_input['x'],n=user_input['n']),
+          product_info_object$deferred_whole_a_x(x=user_input['x'],u=user_input['u']),
+          product_info_object$deferred_term_a_x(x=user_input['x'],n=user_input['n'],u=user_input['u'])
+        )
+      )
+    return(product_info_table)
+  }
+}
+#---------------------------------------------custom settings---------------------------------------------
+custom_width <- 325
+#---------------------------------------------components definition---------------------------------------------
+  #---------------------------------------------header definition---------------------------------------------
 header <- dashboardHeader(
   title = tagList( #dashboard main title
     icon("laptop-code",class = "pull-right"),
@@ -14,7 +355,7 @@ header <- dashboardHeader(
   ),
   titleWidth = custom_width #match custom width in sidebar
 )
-#sidebar...prob || product || profit...icon defined sidebar
+  #---------------------------------------------sidebar definition---------------------------------------------
 sidebar <- dashboardSidebar(
   sidebarMenu( #sidebar menu
     menuItem('§1: Overview', icon = icon('clipboard-list',class = "pull-right"), tabName = 'overview'),
@@ -26,8 +367,22 @@ sidebar <- dashboardSidebar(
   ),
   width = custom_width #custom width matched with header
 )
-#body...tab defined content
+  #---------------------------------------------body definition definition---------------------------------------------
 body <- dashboardBody(
+  #---------------------------------------------css styling---------------------------------------------
+  tags$head(
+    tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML", defer = NA),
+    tags$script(HTML("
+        MathJax.Hub.Config({
+          extensions: ['enclose.js'], // Enable the enclose extension
+          TeX: {
+            Macros: {
+              // You can define additional custom macros here if needed
+            }
+          }
+        });
+      "))
+  ),
   tags$head(
     tags$style(HTML("
     .centered-row {
@@ -79,6 +434,7 @@ body <- dashboardBody(
         }
       "))
   ),
+  #---------------------------------------------overview tab---------------------------------------------
   tabItems( #overview tab content
     tabItem(tabName = "overview",
             h2(
@@ -203,6 +559,7 @@ body <- dashboardBody(
               )
             )
     ),
+  #---------------------------------------------insurable interest tab---------------------------------------------
     tabItem(tabName = "insurable", #insurable interest content
             h2(
               class = "centralized-h2",
@@ -525,7 +882,7 @@ body <- dashboardBody(
                         fluidRow(
                           class = "centered-tabBox",
                           tabBox(
-                            title = tagList(shiny::icon("pen-nib"), "The 5 W's of Underwriting"),
+                            title = "The 5 W's of Underwriting",
                             id = "insurableIntro", height = "100px", side = 'left', width = 12,
                             tabPanel("1. What is underwriting?", 
                                      "Underwriting involves multiple stakeholders within an insurance company. The primary individuals involved are underwriters, who assess the risk of insuring applicants. Other key participants include medical professionals who provide health evaluations, actuarial teams who help in risk assessment and pricing, and insurance agents who gather initial applicant information."
@@ -548,7 +905,7 @@ body <- dashboardBody(
                         fluidRow(
                           class = "centered-tabBox",
                           tabBox(
-                            title = tagList(shiny::icon("pen-nib"), "How Underwriting Works"),
+                            title = "How Underwriting Works",
                             id = "insurableIntro", height = "100px", side = 'left', width = 12,
                             tabPanel("1. Application Submission", 
                                      "The applicant submits a detailed application form, providing personal, medical, and financial information."
@@ -674,8 +1031,7 @@ body <- dashboardBody(
                         width = 10,
                         title = 'Health and Disability Insurance',
                         tabPanel("Brief History",
-                                 tabBox(
-                                   title = "Brief History of Health and Disability Insurance",
+                                 tabsetPanel(
                                    tabPanel(
                                      "19th Century",
                                      "Health insurance emerged with mutual aid societies and early commercial policies. These policies were simple and often provided limited coverage for basic medical expenses."
@@ -707,8 +1063,7 @@ body <- dashboardBody(
                         width = 10,
                         title = 'Long-Term Care Insurance',
                         tabPanel("Brief History",
-                                 tabBox(
-                                   title = "Brief History of Long-Term Care Insurance",
+                                 tabsetPanel(
                                    tabPanel(
                                      "Late 20th Century",
                                      "Long-term care insurance developed to cover extended care services like nursing home and home health care. These policies were designed to address the financial risks of aging and long-term care needs."
@@ -727,8 +1082,10 @@ body <- dashboardBody(
               )
             )
     ),
+  #---------------------------------------------survival models tab---------------------------------------------
     tabItem(tabName = "survival",
             fluidPage(
+              #---------------------------------------------survival models: styling css---------------------------------------------
               tags$head(
                 tags$style(HTML("
                                 /* Centralize tabsetPanel tabs */
@@ -763,31 +1120,702 @@ body <- dashboardBody(
                 ),
                 class = "heading-with-icon"
               ),
+              withMathJax(),
               tabsetPanel(
+                #---------------------------------------------survival models: overview tab---------------------------------------------
                 tabPanel('§1: overview',
-                         'probability distributions intro'
-                ),
-                tabPanel('§2: force of mortality',
-                           sidebarPanel(
-                             sliderInput("age", "life age (x)", 1, 130, 65)
+                         withMathJax(),
+                         tabsetPanel(
+                           tabPanel(
+                             '§1.1: introduction',
+                             div(class = "white-space-mini"),
+                             h3(
+                               class = "left-h4",
+                               tagList(
+                                 "Introduction to Survival Distributions",
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             div(class = "white-space-mini"),
+                             fluidRow(
+                               class = "centered-tabBox",
+                             box(
+                               width = 10,
+                               'In the field of survival analysis, the primary focus is on the time until an event of interest occurs, such as failure of a component or death of an organism. This time-to-event data is characterized by survival distributions, which provide a probabilistic framework for modeling and analyzing such events.'
+                             )),
+                             tabsetPanel(
+                               tabPanel(
+                                 "Cumulative Distribution Function (CDF)",
+                                 fluidRow(
+                                   class = "centered-tabBox",
+                                   box(
+                                     width = 10,
+                                     HTML('
+                                      The Cumulative Distribution Function (CDF) of a random variable \\(T\\), which represents the time to the event, is denoted by \\(F(t)\\) and is defined as: $$F(t) = P(T \\leq t)$$
+                                      This function gives the probability that the event of interest occurs on or before time \\(t\\). The CDF is non-decreasing and ranges from 0 to 1, capturing the accumulated probability up to a given time.
+                                      ')
+                                   ))
+                               ),
+                               tabPanel(
+                                 "Probability Density Function (PDF)",
+                                 fluidRow(
+                                   class = "centered-tabBox",
+                                   box(
+                                     width = 10,
+                                     HTML('
+                                      The Probability Density Function (PDF), denoted by \\(f(t)\\), is the derivative of the CDF and represents the rate of change of the CDF with respect to time: $$f(t) = \\frac{dF(t)}{dt}$$
+                                      The PDF represents the instantaneous rate of occurrence of the event at time \\(t\\).Unlike the CDF, the PDF can take on values greater than 1 but must integrate to 1 over the range of possible values for \\(T\\), ensuring the total probability is conserved.
+                                      ')
+                                   ))
+                               ),
+                               tabPanel(
+                                 "Survival Function",
+                                 fluidRow(
+                                   class = "centered-tabBox",
+                                   box(
+                                     width = 10,
+                                     HTML('
+                                      The survival function, \\(S(t)\\), complements the CDF and represents the probability that the event has not occurred by time \\(t\\): $$S(t) = P(T > t) = 1 - F(t)$$
+                                      This function is crucial in survival analysis as it directly relates to the survival experience of subjects over time.
+                                      ')
+                                   ))
+                               ),
+                               tabPanel(
+                                 "Relationship Between PDF, CDF, and Survival Function",
+                                 fluidRow(
+                                   class = "centered-tabBox",
+                                   box(
+                                     width = 10,
+                                     HTML('
+                                      The interplay between the PDF, CDF, and survival function is foundational in survival analysis: $$f(t) = -\\frac{dS(t)}{dt}$$
+                                      Given \\(F(t) = 1 - S(t)\\), the PDF can also be expressed in terms of the survival function. These relationships allow us to understand the distribution of survival times and the likelihood of events occurring within specified time frames.
+                                      ')
+                                   ))
+                               )
+                             ),
+                             div(class = "white-space-mini"),
+                             h3(
+                               class = "left-h4",
+                               tagList(
+                                 "Conditions for a Valid Survival Model",
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             fluidRow(
+                               class = "centered-tabBox",
+                               tabsetPanel(
+                                 tabPanel(
+                                   'Non-Negativity',
+                                   div(class = "white-space-mini"),
+                                   box(
+                                     width = 10,
+                                     'The survival time \\(T\\) must be non-negative: $$(T \\geq 0)$$'
+                                   )
+                                 ),
+                                 tabPanel(
+                                   'Proper Distribution',
+                                   div(class = "white-space-mini"),
+                                   box(
+                                     width = 10,
+                                     'The CDF \\(F(t)\\) must approach 1 as \\(t\\) approaches infinity, ensuring the event eventually occurs.'
+                                   )
+                                 ),
+                                 tabPanel(
+                                   'Monotonicity',
+                                   div(class = "white-space-mini"),
+                                   box(
+                                     width = 10,
+                                     "The CDF \\(F(t)\\) must be non-decreasing, and the survival function \\(S(t)\\) must be non-increasing, reflecting the passage of time and the increasing probability of the event's occurrence."
+                                   )
+                                 )
+                               )
+                             ),
+                             div(class = "white-space-mini"),
+                             h3(
+                               class = "left-h4",
+                               tagList(
+                                 "Applications in Survival Analysis",
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             fluidRow(
+                               class = "centered-tabBox",
+                               box(
+                                 width = 10,
+                                 HTML('
+                                      Survival distributions and their associated functions are utilized extensively in various applications, such as: <br>
+                                      &emsp; - <b>Medical Research:</b> Modeling patient survival times post-treatment. <br>
+                                      &emsp; - <b>Engineering:</b> Predicting the failure times of mechanical systems. <br>
+                                      &emsp; - <b>Insurance:</b> Estimating the time to claim occurrences. <br>
+                                      Understanding and applying these concepts allows researchers and practitioners to make informed decisions based on the probabilistic behavior of time-to-event data.
+                                      ')
+                               )
+                             )
+                           ),
+                           tabPanel(
+                             '§1.2: survival distributions',
+                             div(class = "white-space-mini"),
+                             h3(
+                               class = "left-h4",
+                               tagList(
+                                 "Survival Distributions Infographic",
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             div(class = "white-space-mini"),
+                             fluidRow(
+                               withMathJax(),
+                               useShinyFeedback(),
+                               sidebarLayout(
+                                 sidebarPanel(
+                                   width = 3,
+                                   withMathJax(),
+                                   sliderInput('x', 'life age (\\(x\\))', 0, 130, 65),
+                                   sliderInput('t', 'range of future periods (\\(t_{min}\\) , \\(t_{max}\\))', 0, 130, c(35,95)),
+                                   sliderInput('m', 'compounding frequency per year (\\(m\\))', 1, 365, 1),
+                                   selectInput("frac_assump","fractional age assumption",choices = c("UDD",'Constant'),selected = 'UDD'),
+                                   selectInput("mort_law","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                                   conditionalPanel(condition = "input.mort_law == 'Gompertz'",
+                                                    numericInput(inputId = 'B1',label = '\\(B\\)',value = 0.00008),
+                                                    numericInput(inputId = 'C1',label = '\\(C\\)',value = 1.07)),
+                                   conditionalPanel(condition = "input.mort_law == 'Makeham'",
+                                                    numericInput(inputId = 'A',label = '\\(A\\)',value = 0.00022),
+                                                    numericInput(inputId = 'B2',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                                    numericInput(inputId = 'C2',label = '\\(C\\)',value = 1.124)),
+                                   conditionalPanel(condition = "input.mort_law == 'Moivre'",
+                                                    sliderInput('alpha','\\(\\alpha\\)',0,0.99,0.01)),
+                                   actionButton(inputId='button',label='plot'),
+                                   htmlOutput("validation_message")
+                                 ),
+                                 mainPanel(
+                                   tabsetPanel(
+                                     tabPanel(
+                                       'Whole Age Survival Distributions',
+                                       withSpinner(plotOutput('output_survivalDist_plot'))
+                                     ), 
+                                     tabPanel(
+                                       'Fractional Age Survival Distributions',
+                                       withSpinner(plotOutput('output_survivalDist_plot2'))
+                                     )
+                                   )
+                                   ,
+                                   div(class = "white-space-mini"),
+                                   h4(
+                                     class = "left-h4",
+                                     tagList(
+                                       "Mortality Asuumptions",
+                                       icon("section",class = "pull-left")
+                                     ),
+                                     class = "heading-with-icon"
+                                   ),
+                                   tabsetPanel(
+                                     tabPanel('Fractional Age Assumptions',
+                                              tabsetPanel(
+                                                tabPanel('Uniform Distribution of Deaths (UDD)',
+                                                         'The UDD assumption posits that deaths are uniformly distributed throughout the year. This approach is straightforward, assuming an even probability of death at any point within the year. It’s particularly useful for simplifying calculations in life insurance and pension valuations.'
+                                                         ),
+                                                tabPanel('Constant Force of Mortality',
+                                                         'The Constant Force of Mortality assumption suggests that the mortality rate remains constant over short intervals. This implies that the probability of death is the same at any point in time within the year, leading to an exponential distribution of survival times. This assumption is valuable for more detailed actuarial models where continuous mortality rates are required.'
+                                                )
+                                              )),
+                                     tabPanel('Laws of Mortality',
+                                              tabsetPanel(
+                                                tabPanel("Moivre's Law",
+                                                         HTML("Moivre's Law, introduced by Abraham de Moivre, provides a simplistic yet insightful model of mortality. It suggests a linear relationship between age and mortality rates, which can be expressed as follows when incorporating a general constant \\(\\alpha\\). The formula is: $$\\mu_x = \\frac{\\alpha}{\\omega-x}$$
+                                                              where \\(\\mu_x\\). This linear decline model is a foundational concept in actuarial science, providing a baseline that can be refined with more complex models. Moivre's Law is particularly useful for its simplicity and ease of calculation, making it a valuable tool in the initial stages of mortality analysis.
+                                                              ")
+                                                  
+                                                ),
+                                                tabPanel("Gompertz's Law",
+                                                         HTML("Gompertz's Law posits that the force of mortality increases exponentially with age. The formula is: $$\\mu_x = Bc^x$$
+                                                            where \\(\\mu_x\\) is the force of mortality at age \\(x\\),  \\(B\\) is a constant, and \\(c\\) is the rate of increase.  
+                                                            This exponential increase captures the observed pattern of mortality rates rising sharply with advancing age, making it a widely used and significant model in actuarial science. 
+                                                            ")
+                                                ),
+                                                tabPanel("Makeham's Law",
+                                                         "Makeham's Law extends Gompertz’s Law by adding a constant to account for age-independent mortality risks. The formula is: $$\\mu_x = A+Bc^x$$
+                                                         where \\(\\mu_x\\) is the force of mortality at age \\(x\\),  \\(A\\) is the age-independent component,  \\(B\\) is a constant, and \\(c\\) is the rate of increase. This law is beneficial for incorporating both age-related and constant mortality risks, providing a more comprehensive mortality model.
+                                                         "
+                                                )))
+                                     )
+                                 )
+                               )
+                             )
                            )
+                         )
                 ),
+                #---------------------------------------------survival models: force of mortality tab---------------------------------------------
+                tabPanel(
+                  '§2: force of mortality',
+                  sidebarLayout(
+                    sidebarPanel(
+                      width = 3,
+                      withMathJax(),
+                      sliderInput('x2', 'life age (\\(x\\))', 0, 130, 65),
+                      sliderInput('t2', 'range of future periods (\\(t_{min}\\) , \\(t_{max}\\))', 0, 130, c(35,95)),
+                      sliderInput('m2', 'compounding frequency per year (\\(m\\))', 1, 365, 1),
+                      selectInput("frac_assump2","fractional age assumption",choices = c("UDD",'Constant'),selected = 'UDD'),
+                      selectInput("mort_law2","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                      conditionalPanel(condition = "input.mort_law2 == 'Gompertz'",
+                                       numericInput(inputId = 'B12',label = '\\(B\\)',value = 0.00008),
+                                       numericInput(inputId = 'C12',label = '\\(C\\)',value = 1.07)),
+                      conditionalPanel(condition = "input.mort_law2 == 'Makeham'",
+                                       numericInput(inputId = 'A2',label = '\\(A\\)',value = 0.00022),
+                                       numericInput(inputId = 'B22',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                       numericInput(inputId = 'C22',label = '\\(C\\)',value = 1.124)),
+                      conditionalPanel(condition = "input.mort_law2 == 'Moivre'",
+                                       sliderInput('alpha2','\\(\\alpha\\)',0,0.99,0.01)),
+                      actionButton(inputId='button2',label='plot'),
+                      htmlOutput("validation_message2")
+                    ),
+                    mainPanel(
+                      withSpinner(plotOutput('output_fom_plot')),
+                      div(class = "white-space"),
+                      h4(
+                        class = "left-h4",
+                        tagList(
+                          "Understanding the Force of Mortality",
+                          icon("section",class = "pull-left")
+                        ),
+                        class = "heading-with-icon"
+                      ),
+                      div(class = "white-space-mini"),
+                      tabsetPanel(
+                        tabPanel(
+                          'Introduction',
+                          HTML('
+                               The <b>Force of Mortality</b>, often denoted as <b>\\(\\mu_x\\)</b>, can be thought of as the rate at which individuals are expected to die at a particular age \\(x\\) conditional on having lived to age \\(x\\). <br>
+                               This conditionality is key, as it acknowledges the survival of an individual up to age \\(x\\) and then assesses the immediate risk of death.
+                               ')
+                        ),
+                        tabPanel(
+                          'Mathematical Representation',
+                          HTML('
+                               To formalize this, consider the following formula that encapsulates the relationship between survival probabilities and the force of mortality: $$_tp_x \\cdot q_{(x+t)}$$
+                               where: <br>
+                               &emsp; - <b>\\(_tp_x\\)</b> is the probability that an individual aged \\(x\\) survives to age \\(x+t\\). <br>
+                               &emsp; - <b>\\(q_{(x+t)}\\)</b> is the probability that an individual who has reached age \\(x+t\\) will die within the next year. <br> <br>
+                               The force of mortality <b>\\(\\mu_x\\)</b> is essentially the limit of the mortality rate as the interval approaches zero. Mathematically, it is defined as: $$\\mu_x = \\lim_{\\Delta t \\to 0} \\frac{q_{(x+\\Delta t)}}{\\Delta t}$$
+                               This definition captures the instantaneous risk of death at age \\(x\\), reflecting how the mortality rate changes continuously with age.')
+                        ),
+                        tabPanel(
+                          'Practical Implications',
+                          HTML('
+                               <b>1</b>. Understanding the force of mortality allows actuaries to model and predict mortality patterns with greater precision. It provides a dynamic view of mortality risk that can adapt to varying ages and conditions, making it a powerful tool for applications such as life insurance, pension planning, and demographic studies. <br>
+                               <b>2</b>. By analyzing the force of mortality, actuaries can better assess the probability of survival and death over different age intervals. This, in turn, informs the pricing of life insurance products, the valuation of pension liabilities, and the management of long-term financial risks.')
+                        )
+                      )
+                    )
+                  )      
+                ),
+                #---------------------------------------------survival models: curtate future life-time tab---------------------------------------------
                 tabPanel('§3: curtate future life-time',
-                         sidebarPanel(
-                           sliderInput("age", "life age (x)", 1, 130, 65)
+                         sidebarLayout(
+                           sidebarPanel(
+                             width = 3,
+                             withMathJax(),
+                             sliderInput('x3', 'life age (\\(x\\))', 0, 130, 65),
+                             selectInput("mort_law3","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                             conditionalPanel(condition = "input.mort_law3 == 'Gompertz'",
+                                              numericInput(inputId = 'B13',label = '\\(B\\)',value = 0.00008),
+                                              numericInput(inputId = 'C13',label = '\\(C\\)',value = 1.07)),
+                             conditionalPanel(condition = "input.mort_law3 == 'Makeham'",
+                                              numericInput(inputId = 'A3',label = '\\(A\\)',value = 0.00022),
+                                              numericInput(inputId = 'B23',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                              numericInput(inputId = 'C23',label = '\\(C\\)',value = 1.124)),
+                             conditionalPanel(condition = "input.mort_law3 == 'Moivre'",
+                                              sliderInput('alpha3','\\(\\alpha\\)',0,0.99,0.01)),
+                             actionButton(inputId='button3',label='plot')
+                           ),
+                           mainPanel(
+                             div(class = "white-space"),
+                             h4(
+                               class = "left-h4",
+                               tagList(
+                                 "Complete Future Lifetime (\\(e_x\\) || \\({e^{o}}_x\\))",
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             div(class = "white-space"),
+                             fluidRow(
+                               width=10,
+                               class='centered-tabBox',
+                               valueBox(
+                                 htmlOutput("output_completeLife_plot"), "\\(e_x = \\sum_{i=1}^{\\omega}{_ip_x} \\)", icon = icon("calculator"),
+                                 color = "blue"
+                               ),
+                               valueBox(
+                                 htmlOutput("output_completeLife_plot2"), "\\({e^{o}}_x = \\int_{i=1}^{\\omega}{_ip_x} \\approx e_x + \\frac{1}{2} \\)", icon = icon("calculator"),
+                                 color = "blue"
+                               )
+                             ),
+                             div(class = "white-space"),
+                             h4(
+                               class = "left-h4",
+                               tagList(
+                                 "Understanding Curtate Future Lifetime",
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             div(class = "white-space-mini"),
+                             tabsetPanel(
+                               tabPanel(
+                                 HTML("<b>\\(K_x\\)</b>: The Curtate Future Lifetime"),
+                                 HTML('
+                                      <b>\\(K_x\\)</b> represents the curtate future lifetime of an individual aged \\(x\\). It is defined as the number of complete years lived by an individual from age \\(x\\) until death. <br>
+                                      Mathematically, if <b>\\(T_x\\)</b> is the future lifetime of an individual aged \\(x\\), then $$K_x = \\lfloor T_x \\rfloor$$
+                                      &emsp; - where, \\(\\lfloor T_x \\rfloor\\) denotes the greatest integer less than or equal to <b>\\(T_x\\)</b>.<br><br>
+                                      Essentially, <b>\\(K_x\\)</b> truncates the continuous future lifetime <b>\\(T_x\\)</b> to a whole number of years. This discrete approach to measuring lifetime is particularly useful in practical actuarial calculations, such as in the determination of life insurance benefits and annuity payments, where payments are typically made at the end of each year.')
+                               ),
+                               tabPanel(
+                                 HTML("<b>\\(e_x\\)</b>: The Complete Expectation of Life"),
+                                 HTML('
+                                      <b>\\(e_x\\)</b>, known as the complete expectation of life, is the expected remaining lifetime of an individual aged  \\(x\\). It is given by the sum of the expected value of \\(K_x\\), reflecting the average number of years an individual is expected to live beyond age \\(x\\). Mathematically: $$e_x = \\sum_{k = 0}^{\\omega}{k \\cdot P(K_{x} = k)}$$
+                                      &emsp; - where, \\(P(K_{x} = k)\\) is the probability that the curtate future lifetime \\(K_x\\) equals \\(k\\). <br><br>
+                                      This summation takes into account all possible ages at death and their respective probabilities, providing a comprehensive measure of life expectancy.
+                                      ')
+                               ),
+                               tabPanel(
+                                 HTML("<b>\\({e^{o}}_x\\)</b>: The Curtate Expectation of Life"),
+                                 HTML('
+                                      While <b>\\(e_x\\)</b> is the complete expectation of life, <b>\\({e^{o}}_x\\)</b> is the curtate expectation of life. The curtate expectation of life <b>\\({e^{o}}_x\\)</b> is the expected value of the continuous future lifetime \\(T_x\\), representing the average number of years an individual aged \\(x\\) is expected to live, considering the full span of fractional years. Mathematically:  $${e^{o}}_x = \\int_{i=1}^{\\omega}{_ip_x}$$ <br>
+                                      &emsp; - where, <b> \\(\\int_{i=1}^{\\omega}{_ip_x}\\)</b> is the integral of the survival function \\(S_{x}(i)\\) over the range of future periods. <br><br>
+                                      This integral approximates the sum of the expected values of \\(K_x\\) over the range of future periods, providing a continuous measure of life expectancy.
+                                      ')
+                               ),
+                               tabPanel(
+                                 HTML("Comparison: <b>\\(e_x\\)</b> vs <b>\\({e^{o}}_x\\)</b>"),
+                                 HTML('
+                                      The key difference between <b>\\(e_x\\)</b> and <b>\\({e^{o}}_x\\)</b> lies in their treatment of fractional years: <br><br>
+                                      &emsp; - <b>\\(e_x\\)</b>: Focuses on the number of complete years lived, providing a discrete measure of life expectancy.<br>
+                                      &emsp; - <b>\\({e^{o}}_x\\)</b>: Considers the entire remaining lifespan, including fractional years, offering a more refined and continuous estimate. <br> <br>
+                                      The distinction between these measures is crucial for actuaries and demographers. <b>\\(e_x\\)</b> simplifies calculations by focusing on complete years, which is often useful in financial and insurance contexts where benefits are paid annually. <br> <br>
+                                      In contrast, <b>\\({e^{o}}_x\\)</b> provides a more accurate reflection of life expectancy by incorporating fractional years, which is important for more precise actuarial assessments and demographic studies.
+                                      ')
+                               )
+                             )
+                             
+                             
+                           )
                          )
                 ),
+                #---------------------------------------------survival models: life tables and selection tab---------------------------------------------
                 tabPanel('§4: life tables and selection',
-                         sidebarPanel(
-                           sliderInput("age", "life age (x)", 1, 130, 65)
+                         tabsetPanel(
+                           #---------------------------------------------life tables and selection: life tables tab---------------------------------------------
+                           tabPanel(
+                             '§4.1: life tables',
+                             sidebarLayout(
+                               sidebarPanel(
+                                 width = 3,
+                                 withMathJax(),
+                                 sliderInput('x4', 'life age (\\(x\\))', 0, 130, 65),
+                                 sliderInput('t4', 'range of future periods (\\(t_{min}\\) , \\(t_{max}\\))', 0, 130, c(35,95)),
+                                 sliderInput('m4', 'compounding frequency per year (\\(m\\))', 1, 365, 1),
+                                 sliderInput('radix', 'radix (\\(l_{x_0}\\))', 1, 100000, 50000),
+                                 selectInput("mort_law4","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                                 conditionalPanel(condition = "input.mort_law4 == 'Gompertz'",
+                                                  numericInput(inputId = 'B14',label = '\\(B\\)',value = 0.00008),
+                                                  numericInput(inputId = 'C14',label = '\\(C\\)',value = 1.07)),
+                                 conditionalPanel(condition = "input.mort_law4 == 'Makeham'",
+                                                  numericInput(inputId = 'A4',label = '\\(A\\)',value = 0.00022),
+                                                  numericInput(inputId = 'B24',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                                  numericInput(inputId = 'C24',label = '\\(C\\)',value = 1.124)),
+                                 conditionalPanel(condition = "input.mort_law4 == 'Moivre'",
+                                                  sliderInput('alpha4','\\(\\alpha\\)',0,0.99,0.01)),
+                                 actionButton(inputId='button4',label='plot'),
+                                 htmlOutput("validation_message4")
+                               ),
+                               
+                               mainPanel(
+                                 div(class = "white-space"),
+                                 h4(
+                                   class = "left-h4",
+                                   tagList(
+                                     "Ultimate Life-Table",
+                                     icon("section",class = "pull-left")
+                                   ),
+                                   class = "heading-with-icon"
+                                 ),
+                                 withSpinner(plotOutput('output_lifeTable_plot')),
+                                 div(class = "white-space"),
+                                 h4(
+                                   class = "left-h4",
+                                   tagList(
+                                     "Understanding Life-Tables",
+                                     icon("section",class = "pull-left")
+                                   ),
+                                   class = "heading-with-icon"
+                                 ),
+                                 div(class = "white-space-mini"),
+                                 fluidRow(
+                                   width=10,
+                                   class='centered-tabBox',
+                                   tabsetPanel(
+                                     tabPanel(
+                                       'Importance and Role of Life-Tables',
+                                       HTML("
+                                            Life-tables summarize the mortality experience of a population, presenting key information such as the probability of surviving to a certain age and the expected number of remaining years of life for individuals at different ages. This data is vital for actuaries to assess and price life insurance policies, annuities, and pension plans. By leveraging life-tables, actuaries can estimate the likelihood of policyholders' survival over various time horizons, ensuring the financial stability of insurance products and retirement schemes.
+                                            ")
+                                     ),
+                                     tabPanel(
+                                       'Ultimate and Select Life-Tables',
+                                       HTML("
+                                            Life-tables can be categorized into two main types: ultimate and select life-tables. <br><br>
+                                            &emsp; - <b>Ultimate Life-Tables:</b> These tables provide mortality rates that apply to the general population without considering the duration since underwriting or selection. They are based on the long-term mortality experience and are used for individuals who have been exposed to the risk of death for a significant period. <br><br>
+                                            &emsp; - <b>Select Life-Tables:</b> These tables take into account the duration since underwriting or selection, reflecting the mortality rates of individuals who have recently undergone underwriting. Select life-tables are particularly useful in the early years after policy issuance when the effect of underwriting selection is most pronounced. 
+                                            ")
+                                     ),
+                                     tabPanel(
+                                       'Survival Probabilities and Life-Table Values',
+                                       HTML("
+                                            Survival probabilities and life-table values are intricately linked. The probability that an individual aged \\(x\\) will survive for \\(t\\) more years, denoted as \\(_tp_x\\), and the probability that an individual aged \\(x\\) will die within \\(t\\) years, denoted as \\(_tq_x\\) can be expressed in terms of life-table values \\(l_x\\) (the number of survivors at age \\(x\\)).
+                                            $$_tp_x = \\frac{l_{x+t}}{l_x}$$
+                                            $$_tq_x = 1 - {_t}p_x = \\frac{l_x - l_{x+t}}{l_x}$$
+                                            These relationships highlight the direct connection between survival probabilities and the decrement functions in life-tables. <br><br>
+                                            Life-table values can be computed recursively, which is crucial for constructing and updating life-tables. Starting from a given initial number of individuals, \\(l_0\\), the number of survivors at each subsequent age can be calculated using the mortality rate\\(q_x\\) (the probability of dying between ages \\(x\\) and \\(x+1\\):
+                                            $$l_{x+1} = l_x \\cdot (1 - q_x)$$
+                                            By applying this recursive formula, actuaries can systematically determine the number of survivors at each age, building a comprehensive life-table.
+                                            ")
+                                     )
+                                   )
+                                 )
+                               )
+                             )
+                           ),
+                           #---------------------------------------------life tables and selection: selection tab---------------------------------------------
+                           tabPanel(
+                             '§4.2: selection',
+                             sidebarLayout(
+                               sidebarPanel(
+                                 width = 3,
+                                 withMathJax(),
+                                 sliderInput('x5', 'life age (\\(x\\))', 0, 130, 65),
+                                 sliderInput('t5', 'range of future periods (\\(t_{min}\\) , \\(t_{max}\\))', 0, 130, c(35,95)),
+                                 sliderInput('m5', 'compounding frequency per year (\\(m\\))', 1, 365, 1),
+                                 sliderInput('d', 'length of select period (\\(d\\))', 1, 130, 2),
+                                 selectInput("mort_law5","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                                 conditionalPanel(condition = "input.mort_law5 == 'Gompertz'",
+                                                  numericInput(inputId = 'B15',label = '\\(B\\)',value = 0.00008),
+                                                  numericInput(inputId = 'C15',label = '\\(C\\)',value = 1.07)),
+                                 conditionalPanel(condition = "input.mort_law5 == 'Makeham'",
+                                                  numericInput(inputId = 'A5',label = '\\(A\\)',value = 0.00022),
+                                                  numericInput(inputId = 'B25',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                                  numericInput(inputId = 'C25',label = '\\(C\\)',value = 1.124)),
+                                 conditionalPanel(condition = "input.mort_law5 == 'Moivre'",
+                                                  sliderInput('alpha5','\\(\\alpha\\)',0,0.99,0.01)),
+                                 actionButton(inputId='button5',label='plot'),
+                                 htmlOutput("validation_message5")
+                               ),
+                               
+                               mainPanel(
+                                 div(class = "white-space"),
+                                 h4(
+                                   class = "left-h4",
+                                   tagList(
+                                     HTML("Comparison of \\(_tp_x\\) and \\(_t{p_{[x]}}\\)"),
+                                     icon("section",class = "pull-left")
+                                   ),
+                                   class = "heading-with-icon"
+                                 ),
+                                 withSpinner(plotOutput('output_selection_plot')),
+                                 div(class = "white-space-mini"),
+                                 useShinyjs(),  # Initialize shinyjs
+                                 fluidRow(
+                                   tags$div(class = "custom-tabbox",tags$div(actionButton("infoButton", "", icon = icon("comment-dots")))),
+                                   hidden(div(id = "selectionPanel", 
+                                              HTML("• What are the Impacts of Selection on Survival Probabilities?"),
+                                              br(),
+                                              HTML("&emsp; - <b> Higher Survival Probabilities in Select Cohorts </b>: Persons in select cohorts typically exhibit higher survival probabilities compared to their ultimate counterparts. This trend is evident in the plot where the red points (select survival probabilities) consistently lie above the blue points (ultimate survival probabilities) across most of the future periods. The selection process, which involves underwriting and risk assessment, identifies healthier individuals, resulting in lower initial mortality rates for these select cohorts."),
+                                              br(),
+                                              HTML("&emsp; - <b> Increasing Impact Over Time </b>: The impact of selection on survival probabilities becomes more pronounced the further out the select period extends. As shown in the plot, the disparity between select and ultimate survival probabilities widens initially, demonstrating that individuals in the select cohort benefit from their healthier status over a significant period."),
+                                              br(),
+                                              HTML("&emsp; - <b> Limitations of Long Select Periods </b>: While the plot effectively illustrates the impact of selection, it's important to note that examining extremely long select periods may not be practical in real-world scenarios. Such long select periods are seldom used in practice due to the diminishing impact of selection over time and the increasing convergence of select and ultimate mortality rates. However, the plot serves as a vivid representation of how selection influences survival probabilities, highlighting the importance of accurate mortality modeling in actuarial practices.")
+                                   ))),
+                                 div(class = "white-space"),
+                                 h4(
+                                   class = "left-h4",
+                                   tagList(
+                                     "Understanding Selection",
+                                     icon("section",class = "pull-left")
+                                   ),
+                                   class = "heading-with-icon"
+                                 ),
+                                 div(class = "white-space-mini"),
+                                 tabsetPanel(
+                                   tabPanel(
+                                     'Importance and Role of Selection',
+                                     HTML("
+                                            Selection plays a vital role in actuarial practices by ensuring that individuals with higher mortality risks are appropriately charged higher premiums or offered different insurance terms. This stratification helps manage risk and maintain the financial health of insurance companies. Selection allows for more accurate pricing of insurance products and better prediction of future claims, thereby reducing adverse selection and ensuring equitable treatment of policyholders.
+                                            ")
+                                   ),
+                                   tabPanel(
+                                     'Adjusting the Force of Mortality for Select Lives',
+                                     HTML("
+                                            The force of mortality, \\(\\mu\\), can be adjusted to accommodate select lives using a specific formula. The force of mortality for select lives, \\(\\mu_{[x]+s}\\), can be modified as follows: $$\\mu_{[x]+s} = {0.9}^{d-s} \\cdot \\mu_{x+d}$$
+                                            where: <br>
+                                            &emsp; - <b>s</b>: is the select period time index. <br><br>
+                                            &emsp; - <b>d</b>: is the select period limit, such that \\(0 < s < d\\). <br><br>
+                                            This formula reflects the reduction in mortality rates for individuals who have undergone underwriting, with the select effect diminishing over time.
+                                            ")
+                                   ),
+                                   tabPanel(
+                                     HTML('Computing Survival Probabilities and Life-Table Values with \\(\\mu_{[x]+s}\\)'),
+                                     HTML("
+                                            With the updated force of mortality \\(\\mu_{[x]+s}\\), other survival probabilities and life-table values can be computed to reflect the select mortality rates. The survival probability for a select individual can be expressed as: $$_tp_{[x]+s} = e^{-\\int_{0}^{t}{\\mu_{[x]+s+u}}du}$$
+                                            where: <br>
+                                            &emsp; - <b>\\(\\mu_{[x]+s+u}\\)</b>: is the force of mortality for select lives at age \\(x+s+u\\), such that \\((s+u) < d\\) <br><br>
+                                            The corresponding life-table value, \\(l_{[x]+s}\\), can then be calculated recursively from the ultimate period using: $$l_{[x]+s} = \\frac{l_{x+d}}{_{d-s}p_{[x]+s}}$$
+                                            These adjusted values provide a more accurate depiction of the survival probabilities and expected lifetimes for select individuals, enhancing the precision of actuarial assessments and product pricing.
+                                            ")
+                                   )
+                                 )
+                               )
+                             )
+                           )
                          )
                 ),
+                #---------------------------------------------survival models: notes tab---------------------------------------------
                 tabPanel('§5: notes',
-                         'probability distributions notes'
-                )
-              )
-            )
-    ),
+                         sidebarLayout(
+                           sidebarPanel(
+                             width = 3,
+                             withMathJax(),
+                             sliderInput('x6', 'life age (\\(x\\))', 0, 130, c(40,90)),
+                             sliderInput('d6', 'length of select period (\\(d\\))', 1, 130, 2),
+                             sliderInput('radix6', 'radix (\\(l_{x_0}\\))', 1, 100000, 50000),
+                             selectInput("mort_law6","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                             conditionalPanel(condition = "input.mort_law6 == 'Gompertz'",
+                                              numericInput(inputId = 'B16',label = '\\(B\\)',value = 0.00008),
+                                              numericInput(inputId = 'C16',label = '\\(C\\)',value = 1.07)),
+                             conditionalPanel(condition = "input.mort_law6 == 'Makeham'",
+                                              numericInput(inputId = 'A6',label = '\\(A\\)',value = 0.00022),
+                                              numericInput(inputId = 'B26',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                              numericInput(inputId = 'C26',label = '\\(C\\)',value = 1.124)),
+                             conditionalPanel(condition = "input.mort_law6 == 'Moivre'",
+                                              sliderInput('alpha6','\\(\\alpha\\)',0,0.99,0.01)),
+                             actionButton(inputId='button6',label='plot'),
+                             htmlOutput("validation_message6")
+                           ),
+                           mainPanel(
+                             div(class = "white-space"),
+                             h4(
+                               class = "left-h4",
+                               tagList(
+                                 HTML("Ultimate and Select Life-Table (\\(l_{x} \\; \\& \\;  l_{[x]}\\))"),
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             div(class = "white-space-mini"),
+                             column(withSpinner(DTOutput('output_ultimate_plot')),style = "overflow-y: scroll;overflow-x: scroll;",width = 12),
+                             div(class = "white-space"),
+                             h4(
+                               class = "left-h4",
+                               tagList(
+                                 "Notes on Life-Tables",
+                                 icon("section",class = "pull-left")
+                               ),
+                               class = "heading-with-icon"
+                             ),
+                             tabsetPanel(
+                               tabPanel(
+                                 'Introduction to Parametric and Non-Parametric Methods',
+                                 HTML("
+                                      Before delving into the importance of parametric methods in computing life-table values, it's essential to understand the difference between parametric and non-parametric methods. <br><br>
+                                      &emsp; - <b>Parametric Methods:</b> Parametric methods involve assuming a specific statistical distribution or model for the data and then estimating the parameters of that model. These methods rely on predefined mathematical functions to describe the underlying patterns in the data. <br><br>
+                                      &emsp;&emsp; - <b>Example:</b> <br>
+                                      &emsp;&emsp;&emsp; - Using a <b>Gompertz</b> or <b>Makeham</b> model to describe mortality rates. <br>
+                                      &emsp;&emsp; - <b>Key Characteristics:</b><br>
+                                      &emsp;&emsp;&emsp; - <b>Assumptions:</b> Require assumptions about the distribution or form of the data.<br>
+                                      &emsp;&emsp;&emsp; - <b>Parameters:</b> Estimate a finite number of parameters that define the model.<br>
+                                      &emsp;&emsp;&emsp; - <b>Efficiency:</b> Can be very efficient with large datasets, providing smooth and stable estimates.<br><br>
+                                      &emsp; - <b>Non-Parametric Methods:</b> Non-parametric methods do not assume any specific statistical distribution. Instead, they use the data itself to estimate the function or distribution.<br><br>
+                                      &emsp;&emsp; - <b>Example:</b> <br>
+                                      &emsp;&emsp;&emsp; - <b>Kaplan-Meier</b> estimator for survival probabilities. <br>
+                                      &emsp;&emsp; - <b>Key Characteristics:</b><br>
+                                      &emsp;&emsp;&emsp; - <b>Flexibility:</b> Do not require assumptions about the data's distribution.<br>
+                                      &emsp;&emsp;&emsp; - <b>Data-Driven:</b> Use the empirical distribution of the data to make estimates.<br>
+                                      &emsp;&emsp;&emsp; - <b>Adaptability:</b> Can adapt to different shapes and patterns in the data without being constrained by a predefined model.<br>
+                                      ")
+                               ),
+                               tabPanel(
+                                 "Importance of Parametric Methods",
+                                 HTML("
+                                      Parametric methods play a crucial role in actuarial science, especially in the computation of life-table values, which are vital for the pricing and reserving of life insurance policies, annuities, and pension plans.
+                                      "
+                                 ),
+                                 div(class = "white-space-mini"),
+                                 tabsetPanel(
+                                   tabPanel(
+                                     "Simplification and Estimation",
+                                     HTML("
+                                          Parametric methods simplify the process of estimating survival probabilities and other life-table values by using mathematical formulas. This reduces the need for extensive empirical data and makes it feasible to compute life-table values even when detailed mortality data is not available.
+                                          ")
+                                   ),
+                                   tabPanel(
+                                     "Flexibility and Application",
+                                     HTML("
+                                          hese methods provide flexibility in modeling various mortality patterns and can be adjusted to reflect different demographic and health characteristics of populations. Actuaries can tailor mortality assumptions to specific groups or insurance products.
+                                          ")
+                                   ),
+                                   tabPanel(
+                                     "Consistency and Smoothness",
+                                     HTML("
+                                          By using parametric functions, life-table values can be smoothed and made consistent, eliminating irregularities and anomalies that might be present in raw mortality data. This results in more reliable and stable mortality estimates.
+                                          ")
+                                   ),
+                                   tabPanel(
+                                     "Predictive Power",
+                                     HTML("
+                                          Parametric models, when fitted correctly, can provide strong predictive power, allowing actuaries to make informed projections about future mortality trends and patterns.
+                                          ")
+                                   )
+                                 )
+                               ),
+                               tabPanel(
+                                 "Real-Life Tables vs. Parametric Methods",
+                                 tabsetPanel(
+                                   tabPanel(
+                                     "Real-Life Tables",
+                                     HTML("
+                                        Real-life tables, or empirical life-tables, are constructed from observed mortality data and reflect the actual survival experiences of a specific population. <br><br>
+                                        <b>Advantages:</b><br>
+                                        &emsp; - Highly accurate and reflective of actual mortality experiences. <br>
+                                        &emsp; - Capture real-time changes and trends in mortality rates. <br><br>
+                                        <b>Limitations:</b><br>
+                                        &emsp; - Require extensive and detailed mortality data, which may not always be available. <br>
+                                        &emsp; - Can be affected by irregularities and anomalies in the data, leading to less smooth mortality curves.
+                                        ")
+                                   ),
+                                   tabPanel(
+                                     "Parametric Methods",
+                                     HTML("
+                                        Parametric methods, as discussed, involve fitting mathematical models to mortality data. <br><br>
+                                        <b>Advantages:</b><br>
+                                        &emsp; - Require less detailed data compared to real-life tables, making them more practical in situations with limited mortality information. <br>
+                                        &emsp; - Provide smoother and more stable life-table values by eliminating data irregularities. <br>
+                                        &emsp; - Offer flexibility in modeling different mortality scenarios and can be adjusted for specific populations. <br><br>
+                                        <b>Limitations:</b><br>
+                                        &emsp; - Depend on the chosen mathematical model and its assumptions. If the model does not adequately capture the true mortality pattern, the resulting life-table values may be inaccurate. <br>
+                                        &emsp; - The process of fitting parametric functions to mortality data can introduce estimation errors. <br>
+                                        &emsp; - While providing general trends, parametric methods may fail to capture granular details present in empirical data.
+                                        ")
+                                   )
+                                 )
+                               )
+                             )
+                             )
+                           )
+                         )
+                ))),
+  #---------------------------------------------life-contingent products tab---------------------------------------------
     tabItem(tabName = "product",
             h2(
               class = "centralized-h2",
@@ -796,8 +1824,140 @@ body <- dashboardBody(
                 icon("cart-shopping",class = "pull-center")
               ),
               class = "heading-with-icon"
+            ),
+            tabsetPanel(
+              #---------------------------------------------life-contingent products tab: life insurance products---------------------------------------------
+              tabPanel(
+                '§1: life insurance contracts',
+                sidebarLayout(
+                  sidebarPanel(
+                    width = 3,
+                    withMathJax(),
+                    sliderInput('x7', 'life age (\\(x\\))', 0, 130, 65),
+                    sliderInput('t7', 'range of future periods (\\(t_{min}\\) , \\(t_{max}\\))', 0, 130, c(35,95)),
+                    sliderInput('m7', 'compounding frequency per year (\\(m\\))', 1, 365, 1),
+                    sliderInput('i7', 'interest rate (\\(i\\))', 0, 1, 0.05),
+                    sliderInput('n7', 'length of contract period (\\(n\\))', 1, 130, 5),
+                    sliderInput('u7', 'length of deferral period (\\(u\\))', 0, 130, 0),
+                    selectInput("mort_law7","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                    conditionalPanel(condition = "input.mort_law7 == 'Gompertz'",
+                                     numericInput(inputId = 'B17',label = '\\(B\\)',value = 0.00008),
+                                     numericInput(inputId = 'C17',label = '\\(C\\)',value = 1.07)),
+                    conditionalPanel(condition = "input.mort_law7 == 'Makeham'",
+                                     numericInput(inputId = 'A7',label = '\\(A\\)',value = 0.00022),
+                                     numericInput(inputId = 'B27',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                     numericInput(inputId = 'C27',label = '\\(C\\)',value = 1.124)),
+                    conditionalPanel(condition = "input.mort_law7 == 'Moivre'",
+                                     sliderInput('alpha7','\\(\\alpha\\)',0,0.99,0.01)),
+                    actionButton(inputId='button7',label='plot'),
+                    htmlOutput("validation_message7")
+                  ),
+                  mainPanel(
+                    div(class = "white-space"),
+                    h4(
+                      class = "left-h4",
+                      tagList(
+                        "Life Insurance Contract Infographics",
+                        icon("section",class = "pull-left")
+                      ),
+                      class = "heading-with-icon"
+                    ),
+                    tabsetPanel(
+                      tabPanel(
+                        'Whole Life Insurance',
+                        withSpinner(plotOutput('output_wholeInsurance_plot'))
+                      ),
+                      tabPanel(
+                        'Term Life Insurance',
+                        withSpinner(plotOutput('output_termInsurance_plot'))
+                      ),
+                      tabPanel(
+                        'Endowment Insurance',
+                        withSpinner(plotOutput('output_endowmentInsurance_plot'))
+                      )
+                    ),
+                    div(class = "white-space"),
+                    h4(
+                      class = "left-h4",
+                      tagList(
+                        "Life Insurance Contract Values",
+                        icon("section",class = "pull-left")
+                      ),
+                      class = "heading-with-icon"
+                    ),
+                    fluidRow(
+                      width=10,
+                      withSpinner(uiOutput('insuranceProducts'))
+                    )
+                    )
+                )
+              ),
+              #---------------------------------------------life-contingent products tab: annuity contracts---------------------------------------------
+              tabPanel(
+                '§2: annuity contracts',
+                sidebarLayout(
+                  sidebarPanel(
+                    width = 3,
+                    withMathJax(),
+                    sliderInput('x8', 'life age (\\(x\\))', 0, 130, 65),
+                    sliderInput('t8', 'range of future periods (\\(t_{min}\\) , \\(t_{max}\\))', 0, 130, c(35,95)),
+                    sliderInput('m8', 'compounding frequency per year (\\(m\\))', 1, 365, 1),
+                    sliderInput('i8', 'interest rate (\\(i\\))', 0, 1, 0.05),
+                    sliderInput('n8', 'length of contract period (\\(n\\))', 1, 130, 5),
+                    sliderInput('u8', 'length of deferral period (\\(u\\))', 0, 130, 0),
+                    selectInput("a_s8","annuity schedule",choices = c("Due","Immediate"),selected = 'Due'),
+                    selectInput("mort_law8","underlying mortality law",choices = c("Makeham", "Gompertz", "Moivre"),selected = 'Makeham'),
+                    conditionalPanel(condition = "input.mort_law8 == 'Gompertz'",
+                                     numericInput(inputId = 'B18',label = '\\(B\\)',value = 0.00008),
+                                     numericInput(inputId = 'C18',label = '\\(C\\)',value = 1.07)),
+                    conditionalPanel(condition = "input.mort_law8 == 'Makeham'",
+                                     numericInput(inputId = 'A8',label = '\\(A\\)',value = 0.00022),
+                                     numericInput(inputId = 'B28',label = '\\(B\\)',value = 2.7 * 10^(-6)),
+                                     numericInput(inputId = 'C28',label = '\\(C\\)',value = 1.124)),
+                    conditionalPanel(condition = "input.mort_law8 == 'Moivre'",
+                                     sliderInput('alpha8','\\(\\alpha\\)',0,0.99,0.01)),
+                    actionButton(inputId='button8',label='plot'),
+                    htmlOutput("validation_message8")
+                  ),
+                  mainPanel(
+                    div(class = "white-space"),
+                    h4(
+                      class = "left-h4",
+                      tagList(
+                        "Annuity Contract Infographics",
+                        icon("section",class = "pull-left")
+                      ),
+                      class = "heading-with-icon"
+                    ),
+                    tabsetPanel(
+                      tabPanel(
+                        'Whole Life Annuity',
+                        plotOutput('output_wholeAnnuity_plot')
+                      ),
+                      tabPanel(
+                        'Term Life Annuity',
+                        plotOutput('output_termAnnuity_plot')
+                      )
+                    ),
+                    div(class = "white-space"),
+                    h4(
+                      class = "left-h4",
+                      tagList(
+                        "Annuity Contract Values",
+                        icon("section",class = "pull-left")
+                      ),
+                      class = "heading-with-icon"
+                    ),
+                    fluidRow(
+                      width=10,
+                      uiOutput('annuityProducts')
+                    )
+                  )
+                )
+              )
             )
     ),
+  #---------------------------------------------policy values tab---------------------------------------------
     tabItem(tabName = "profit",
             h2(
               class = "centralized-h2",
@@ -808,6 +1968,7 @@ body <- dashboardBody(
               class = "heading-with-icon"
             )
     ),
+  #---------------------------------------------notes tab---------------------------------------------
     tabItem(tabName = "notes",
             h2(
               class = "centralized-h2",
@@ -821,15 +1982,41 @@ body <- dashboardBody(
   )
 )
 
-#ui...header || sidebar || body...accumulate dashboard components
+#---------------------------------------------ui definition---------------------------------------------
 ui <- dashboardPage(
     header,
     sidebar,
     body
 )
 
-#server...input || output...accumulate server objects
-server <- function(input, output) { 
+#---------------------------------------------server definition---------------------------------------------
+server <- function(input, output, session) { 
+  #----------------------------------------------------t_max update----------------------------------------------------
+  observeEvent(input$m, {
+    # Dynamically update the range of the second sliderInput
+    updateSliderInput(session, inputId = "t", min = 0, max = input$m*130,value = c((input$m*130/2)-(input$m*25),(input$m*130/2)+(input$m*25)))
+  })
+  
+  observeEvent(input$m2, {
+    # Dynamically update the range of the second sliderInput
+    updateSliderInput(session, inputId = "t2", min = 0, max = input$m2*130,value = c((input$m2*130/2)-(input$m2*25),(input$m2*130/2)+(input$m2*25)))
+  })
+  
+  observeEvent(input$m4, {
+    # Dynamically update the range of the second sliderInput
+    updateSliderInput(session, inputId = "t4", min = 0, max = input$m4*130,value = c((input$m4*130/2)-(input$m4*25),(input$m4*130/2)+(input$m4*25)))
+  })
+  
+  observeEvent(input$m5, {
+    # Dynamically update the range of the second sliderInput
+    updateSliderInput(session, inputId = "t5", min = 0, max = input$m5*130,value = c((input$m5*130/2)-(input$m5*25),(input$m5*130/2)+(input$m5*25)))
+  })
+  
+  observeEvent(input$m7, {
+    # Dynamically update the range of the second sliderInput
+    updateSliderInput(session, inputId = "t7", min = 0, max = input$m7*130,value = c((input$m7*130/2)-(input$m7*25),(input$m7*130/2)+(input$m7*25)))
+  })
+  
   #----------------------------------------------------briefHistory flowchart----------------------------------------------------
   briefHistory_nodes <- data.frame(
     id = 1:7,
@@ -905,6 +2092,10 @@ server <- function(input, output) {
   observeEvent(input$infoButton, {
     toggle("insurablePanel")  # Toggle the visibility of the infoPanel
   })
+  
+  observeEvent(input$infoButton, {
+    toggle("selectionPanel")  # Toggle the visibility of the infoPanel
+  })
   #----------------------------------------------------underwriting flowchart----------------------------------------------------
   underwriting_nodes <- data.frame(
     id = 1:4,
@@ -935,9 +2126,9 @@ server <- function(input, output) {
                     &emsp; - <b>SOA's Role in Ongoing Development:</b>The SOA continues to contribute to the field through research, professional development, and the dissemination of best practices; supporting actuaries in staying abreast of technological advancements and evolving regulatory landscapes."),
     shape = "icon",
     icon.face = 'FontAwesome',
-    icon.code = c("f251", "f6f0", "f21a", "f238"),
+    icon.code = c("f52d", "f5ad", "f11c", "f019"),
     icon.size = 40,
-    icon.color = c("red", "green", "brown", "purple")
+    icon.color = c("orange", "blue", "brown", "black")
   )
   
   underwriting_edges <- data.frame(from = c(1, 2, 3), to = c(2, 3, 4))
@@ -975,7 +2166,7 @@ server <- function(input, output) {
                     ),
     shape = "icon",
     icon.face = 'FontAwesome',
-    icon.code = c("f251", "f6f0", "f21a", "f253"),
+    icon.code = c("f752", "f04e", "f04e", "f573"),
     icon.size = 40,
     icon.color = c("red", "green", "brown", "black")
   )
@@ -1013,9 +2204,9 @@ server <- function(input, output) {
     ),
     shape = "icon",
     icon.face = 'FontAwesome',
-    icon.code = c("f251", "f6f0", "f253"),
+    icon.code = c("f251", "f252", "f253"),
     icon.size = 40,
-    icon.color = c("red", "green", "black")
+    icon.color = c("red", "orange", "green")
   )
   
   pensionIntro_edges <- data.frame(from = c(1, 2), to = c(2, 3))
@@ -1038,7 +2229,581 @@ server <- function(input, output) {
     pensionIntro_selectedNode <- pensionIntro_nodes[pensionIntro_nodes$id == input$current_node_id, ]
     paste0("<b> • Node: </b> <br> &emsp; - ", pensionIntro_selectedNode$label, br(), pensionIntro_selectedNode$description)
   })
+  #----------------------------------------------------survivalDist plot----------------------------------------------------  
+  validateInput <- reactive({
+    if ((input$x+(input$t[2]/input$m) >= 130)) {
+      return(HTML('<p>The sum of life age and maximum future period must be less than 130: <b>{x + (t<sub>max</sub> / m) < 130}</b>.</p>'))
+    } else {
+      return(NULL)
+    }
+  })
+  
+  observeEvent(input$button, {
+    validation_message <- validateInput()
+    output$validation_message <- renderUI({ validation_message })
+    
+    if (is.null(validation_message)) {
+      setup_plot_survivalDist <- eventReactive(input$button,{
+        x <- input$x
+        t <- c(input$t[1]:input$t[2])
+        m <- input$m
+        frac_asump <- input$frac_assump
+        mort_law <- input$mort_law
+        if(mort_law == 'Gompertz'){
+          other_params <- list(input$B1,input$C1)
+        } else if(mort_law == 'Makeham'){
+          other_params <- list(input$A,input$B2,input$C2)
+        } else {
+          other_params <- list(input$alpha)
+        }
+        
+        userInput <- dict(
+          x = x,
+          t = t,
+          m = m,
+          frac_asump = frac_asump,
+          mort_law = mort_law,
+          mort_params = other_params,
+          age_range = list(0,130)
+        )
+        return(plot_survivalDist_info(userInput,'whole'))
+      })
+      
+      output$output_survivalDist_plot <- renderPlot({
+        setup_plot_survivalDist()
+      })
+      
+      setup_plot_survivalDist2 <- eventReactive(input$button,{
+        x <- input$x
+        t <- c(input$t[1]:input$t[2])
+        m <- input$m
+        frac_asump <- input$frac_assump
+        mort_law <- input$mort_law
+        if(mort_law == 'Gompertz'){
+          other_params <- list(input$B1,input$C1)
+        } else if(mort_law == 'Makeham'){
+          other_params <- list(input$A,input$B2,input$C2)
+        } else {
+          other_params <- list(input$alpha)
+        }
+        
+        userInput <- dict(
+          x = x,
+          t = t,
+          m = m,
+          frac_asump = frac_asump,
+          mort_law = mort_law,
+          mort_params = other_params,
+          age_range = list(0,130)
+        )
+        return(plot_survivalDist_info(userInput,'frac'))
+      })
+      
+      output$output_survivalDist_plot2 <- renderPlot({
+        setup_plot_survivalDist2()
+      })
+      
+    } else {
+      output$output_survivalDist_plot <- renderPlot({
+        NULL  # Clear the plot if validation fails
+      })
+    }
+  })
+  #----------------------------------------------------FOM plot----------------------------------------------------  
+  validateInput2 <- reactive({
+    if ((input$x2+(input$t2[2]/input$m2) >= 130)) {
+      return(HTML('<p>The sum of life age and maximum future period must be less than 130: <b>{x + (t<sub>max</sub> / m) < 130}</b>.</p>'))
+    } else {
+      return(NULL)
+    }
+  })
+  
+  observeEvent(input$button2, {
+    validation_message2 <- validateInput2()
+    output$validation_message2 <- renderUI({ validation_message2 })
+    
+    if (is.null(validation_message2)) {
+      setup_plot_fom <- eventReactive(input$button2,{
+        x <- input$x2
+        t <- c(input$t2[1]:input$t2[2])
+        m <- input$m2
+        frac_asump <- input$frac_assump2
+        mort_law <- input$mort_law2
+        if(mort_law == 'Gompertz'){
+          other_params <- list(input$B12,input$C12)
+        } else if(mort_law == 'Makeham'){
+          other_params <- list(input$A2,input$B22,input$C22)
+        } else {
+          other_params <- list(input$alpha2)
+        }
+        
+        userInput <- dict(
+          x = x,
+          t = t,
+          m = m,
+          frac_asump = frac_asump,
+          mort_law = mort_law,
+          mort_params = other_params,
+          age_range = list(0,130)
+        )
+        return(plot_fom_info(userInput))
+      })
+      
+      output$output_fom_plot <- renderPlot({
+        setup_plot_fom()
+      })
+      
+    } else {
+      output$output_fom_plot <- renderPlot({
+        NULL  # Clear the plot if validation fails
+      })
+    }
+  })
+  #----------------------------------------------------complete-life numbers----------------------------------------------------
+  setup_plot_completeLife <- eventReactive(input$button3,{
+        x <- input$x3
+        mort_law <- input$mort_law3
+        if(mort_law == 'Gompertz'){
+          other_params <- list(input$B13,input$C13)
+        } else if(mort_law == 'Makeham'){
+          other_params <- list(input$A3,input$B23,input$C23)
+        } else {
+          other_params <- list(input$alpha3)
+        }
+        
+        userInput <- dict(
+          x = x,
+          t = c(20:100),
+          m = 1,
+          frac_asump = 'UDD',
+          mort_law = mort_law,
+          mort_params = other_params,
+          age_range = list(0,130)
+        )
+        return(plot_survivalDist_info(userInput,'complete'))
+      })
+      
+      output$output_completeLife_plot <- renderText({
+        setup_plot_completeLife()
+      })
+      
+      output$output_completeLife_plot2 <- renderText({
+        setup_plot_completeLife()+0.5
+      })
+
+  #----------------------------------------------------lifeTable plot----------------------------------------------------      
+      validateInput4 <- reactive({
+        if ((input$x4+(input$t4[2]/input$m4) >= 130)) {
+          return(HTML('<p>The sum of life age and maximum future period must be less than 130: <b>{x + (t<sub>max</sub> / m) < 130}</b>.</p>'))
+        } else {
+          return(NULL)
+        }
+      })
+      
+      observeEvent(input$button4, {
+        validation_message4 <- validateInput4()
+        output$validation_message4 <- renderUI({ validation_message4 })
+        
+        if (is.null(validation_message4)) {
+          setup_plot_lifeTable <- eventReactive(input$button4,{
+            x <- input$x4
+            t <- c(input$t4[1]:input$t4[2])
+            m <- input$m4
+            frac_asump <- 'UDD'
+            mort_law <- input$mort_law4
+            if(mort_law == 'Gompertz'){
+              other_params <- list(input$B14,input$C14)
+            } else if(mort_law == 'Makeham'){
+              other_params <- list(input$A4,input$B24,input$C24)
+            } else {
+              other_params <- list(input$alpha4)
+            }
+            
+            userInput <- dict(
+              x = x,
+              t = t,
+              m = m,
+              frac_asump = frac_asump,
+              mort_law = mort_law,
+              mort_params = other_params,
+              age_range = list(0,130)
+            )
+            return(plot_survivalDist_info(userInput,type='life',radix=input$radix))
+          })
+          
+          output$output_lifeTable_plot <- renderPlot({
+            setup_plot_lifeTable()
+          })
+          
+        } else {
+          output$output_lifeTable_plot <- renderPlot({
+            NULL  # Clear the plot if validation fails
+          })
+        }
+      })  
+  #----------------------------------------------------selection plot----------------------------------------------------     
+      validateInput5 <- reactive({
+        if ((input$x5+(input$t5[2]/input$m5) >= 130)) {
+          return(HTML('<p>The sum of life age and maximum future period must be less than 130: <b>{x + (t<sub>max</sub> / m) < 130}</b>.</p>'))
+        } else if ((input$x5+input$d >= 130)) {
+          return(HTML('<p>The sum of life age and select period must be less than 130: <b>{x + d < 130}</b>.</p>'))
+        }else {
+          return(NULL)
+        }
+      })
+      
+      observeEvent(input$button5, {
+        validation_message5 <- validateInput5()
+        output$validation_message5 <- renderUI({ validation_message5 })
+        
+        if (is.null(validation_message5)) {
+          setup_plot_selection <- eventReactive(input$button5,{
+            x <- input$x5
+            t <- c(input$t5[1]:input$t5[2])
+            m <- input$m5
+            frac_asump <- 'UDD'
+            mort_law <- input$mort_law5
+            if(mort_law == 'Gompertz'){
+              other_params <- list(input$B15,input$C15)
+            } else if(mort_law == 'Makeham'){
+              other_params <- list(input$A5,input$B25,input$C25)
+            } else {
+              other_params <- list(input$alpha5)
+            }
+            
+            userInput <- dict(
+              x = x,
+              t = t,
+              m = m,
+              frac_asump = frac_asump,
+              mort_law = mort_law,
+              mort_params = other_params,
+              age_range = list(0,130)
+            )
+            return(plot_survivalDist_info(userInput,type='select',select=input$d))
+          })
+          
+          output$output_selection_plot <- renderPlot({
+            setup_plot_selection()
+          })
+          
+        } else {
+          output$output_selection_plot <- renderPlot({
+            NULL  # Clear the plot if validation fails
+          })
+        }
+      }) 
+  #----------------------------------------------------ultimate plot----------------------------------------------------     
+      validateInput6 <- reactive({
+        if ((input$x6[2]+input$d6 >= 130)) {
+          return(HTML('<p>The sum of life age and select period must be less than 130: <b>{x + d < 130}</b>.</p>'))
+        } else if (((input$x6[1]-input$d6) < 0 )) {
+          return(HTML('<p>The difference of the select period from the life age must at least be zero: <b>{x - d >= 0}</b>.</p>'))
+        }
+        else {
+          return(NULL)
+        }
+      })
+      
+      observeEvent(input$button6, {
+        validation_message6 <- validateInput6()
+        output$validation_message6 <- renderUI({ validation_message6 })
+        
+        if (is.null(validation_message6)) {
+          setup_plot_ultimate <- eventReactive(input$button6,{
+            x <- input$x6[2]
+            t <- c(0:130)
+            m <- 1
+            frac_asump <- 'UDD'
+            mort_law <- input$mort_law6
+            if(mort_law == 'Gompertz'){
+              other_params <- list(input$B16,input$C16)
+            } else if(mort_law == 'Makeham'){
+              other_params <- list(input$A6,input$B26,input$C26)
+            } else {
+              other_params <- list(input$alpha6)
+            }
+            
+            userInput <- dict(
+              x = x,
+              t = t,
+              m = m,
+              frac_asump = frac_asump,
+              mort_law = mort_law,
+              mort_params = other_params,
+              age_range = list(0,130)
+            )
+            return(plot_survivalDist_info(userInput,type='ultimate',select=input$d6,radix=input$radix6,x_range=input$x6))
+          })
+          
+          output$output_ultimate_plot <- renderDT({
+            setup_plot_ultimate()
+          })
+          
+        } else {
+          output$output_ultimate_plot <- renderDT({
+            NULL  # Clear the plot if validation fails
+          })
+        }
+      }) 
+  #---------------------------------------------insurance dynamicValueBox---------------------------------------------
+      validateInput7 <- reactive({
+        if ((input$x7 + input$t7[2] >= 130)) {
+          return(HTML('<p>The sum of life age and maximum future period must be less than 130: <b>{x + t<sub>max</sub> < 130}</b>.</p>'))
+        } else if (input$x7 + input$t7[2] + input$n7 >= 130 ){
+          return(HTML('<p>The sum of life age, contract term, and maximum future period must be less than 130: <b>{x + t<sub>max</sub> + n < 130}</b>.</p>'))
+        } else if (input$x7 + input$t7[2] + input$n7 + input$u7 >= 130 ){
+          return(HTML('<p>The sum of life age, deferral period, contract term, and maximum future period must be less than 130: <b>{x + t<sub>max</sub> + n + u  < 130}</b>.</p>'))
+        }
+          else {
+          return(NULL)
+        }
+      })
+      
+      observeEvent(input$button7, {
+        validation_message7 <- validateInput7()
+        output$validation_message7 <- renderUI({ validation_message7 })
+        
+        if (is.null(validation_message7)) {
+          setup_plot_insuranceTable <- eventReactive(input$button7,{
+            x <- input$x7
+            t <- c(input$t7[1]:input$t7[2])
+            m <- input$m7
+            n <- input$n7
+            i <- input$i7
+            u <- input$u7
+            annuity_schedule <- 'Due'
+            frac_asump <- 'UDD'
+            mort_law <- input$mort_law7
+            if(mort_law == 'Gompertz'){
+              other_params <- list(input$B17,input$C17)
+            } else if(mort_law == 'Makeham'){
+              other_params <- list(input$A7,input$B27,input$C27)
+            } else {
+              other_params <- list(input$alpha7)
+            }
+            
+            userInput <- dict(
+              x = x,
+              t = t,
+              m = m,
+              n = n,
+              i = i,
+              u = u,
+              annuity_schedule = annuity_schedule,
+              frac_asump = frac_asump,
+              mort_law = mort_law,
+              mort_params = other_params,
+              age_range = list(0,130)
+            )
+            return(plot_product_info(userInput,type='insuranceTable'))
+          })
+          
+          output$insuranceProducts <- renderUI({
+            # Code to generate each of the messageItems here, in a list. This assumes
+            # that messageData is a data frame with two columns, 'from' and 'message'.
+            valueBoxes <- apply(setup_plot_insuranceTable(), 1, function(row) {
+              valueBox(
+                value = withMathJax(row[["value"]]),
+                subtitle = row[["label"]],
+                width=4
+              )
+            })
+
+            # Create a tagList to hold the value boxes
+            tagList(valueBoxes)
+          })
+          
+          setup_plot_wholeInsurance <- eventReactive(input$button7,{
+            x <- input$x7
+            t <- c(input$t7[1]:input$t7[2])
+            m <- input$m7
+            n <- input$n7
+            i <- input$i7
+            u <- input$u7
+            annuity_schedule <- 'Due'
+            frac_asump <- 'UDD'
+            mort_law <- input$mort_law7
+            if(mort_law == 'Gompertz'){
+              other_params <- list(input$B17,input$C17)
+            } else if(mort_law == 'Makeham'){
+              other_params <- list(input$A7,input$B27,input$C27)
+            } else {
+              other_params <- list(input$alpha7)
+            }
+            
+            userInput <- dict(
+              x = x,
+              t = t,
+              m = m,
+              n = n,
+              i = i,
+              u = u,
+              annuity_schedule = annuity_schedule,
+              frac_asump = frac_asump,
+              mort_law = mort_law,
+              mort_params = other_params,
+              age_range = list(0,130)
+            )
+            return(plot_product_info(userInput,type='wholeInsurance'))
+          })
+          
+          output$output_wholeInsurance_plot <- renderPlot({
+            setup_plot_wholeInsurance()
+          })  
+          
+          setup_plot_termInsurance <- eventReactive(input$button7,{
+            x <- input$x7
+            t <- c(input$t7[1]:input$t7[2])
+            m <- input$m7
+            n <- input$n7
+            i <- input$i7
+            u <- input$u7
+            annuity_schedule <- 'Due'
+            frac_asump <- 'UDD'
+            mort_law <- input$mort_law7
+            if(mort_law == 'Gompertz'){
+              other_params <- list(input$B17,input$C17)
+            } else if(mort_law == 'Makeham'){
+              other_params <- list(input$A7,input$B27,input$C27)
+            } else {
+              other_params <- list(input$alpha7)
+            }
+            
+            userInput <- dict(
+              x = x,
+              t = t,
+              m = m,
+              n = n,
+              i = i,
+              u = u,
+              annuity_schedule = annuity_schedule,
+              frac_asump = frac_asump,
+              mort_law = mort_law,
+              mort_params = other_params,
+              age_range = list(0,130)
+            )
+            return(userInput)
+          })
+          
+          output$output_termInsurance_plot <- renderPlot({
+            plot_product_info(setup_plot_termInsurance(),type='termInsurance')
+          })
+          
+          output$output_endowmentInsurance_plot <- renderPlot({
+            plot_product_info(setup_plot_termInsurance(),type='endowmentInsurance')
+          })
+          
+        } else {
+          
+          output$insuranceProducts <- renderUI({
+            NULL
+          })
+          
+          output$output_wholeInsurance_plot <- renderPlot({
+            NULL
+          })  
+          
+          output$output_termInsurance_plot <- renderPlot({
+            NULL
+          })
+        }
+      }) 
+  #---------------------------------------------annuity dynamicValueBox-------------------------------------------------------------
+      validateInput8 <- reactive({
+        if ((input$x8 + input$t8[2] >= 130)) {
+          return(HTML('<p>The sum of life age and maximum future period must be less than 130: <b>{x + t<sub>max</sub> < 130}</b>.</p>'))
+        } else if (input$x8 + input$t8[2] + input$n8 >= 130 ){
+          return(HTML('<p>The sum of life age, contract term, and maximum future period must be less than 130: <b>{x + t<sub>max</sub> + n < 130}</b>.</p>'))
+        } else if (input$x8 + input$t8[2] + input$n8 + input$u8 >= 130 ){
+          return(HTML('<p>The sum of life age, deferral period, contract term, and maximum future period must be less than 130: <b>{x + t<sub>max</sub> + n + u  < 130}</b>.</p>'))
+        }
+        else {
+          return(NULL)
+        }
+      })
+      
+      observeEvent(input$button8, {
+        validation_message8 <- validateInput8()
+        output$validation_message8 <- renderUI({ validation_message8 })
+        
+        if (is.null(validation_message8)) {
+          setup_plot_annuityUI <- eventReactive(input$button8,{
+            x <- input$x8
+            t <- c(input$t8[1]:input$t8[2])
+            m <- input$m8
+            n <- input$n8
+            i <- input$i8
+            u <- input$u8
+            annuity_schedule <- input$a_s8
+            frac_asump <- 'UDD'
+            mort_law <- input$mort_law8
+            if(mort_law == 'Gompertz'){
+              other_params <- list(input$B18,input$C18)
+            } else if(mort_law == 'Makeham'){
+              other_params <- list(input$A8,input$B28,input$C28)
+            } else {
+              other_params <- list(input$alpha8)
+            }
+            
+            userInput <- dict(
+              x = x,
+              t = t,
+              m = m,
+              n = n,
+              i = i,
+              u = u,
+              annuity_schedule = annuity_schedule,
+              frac_asump = frac_asump,
+              mort_law = mort_law,
+              mort_params = other_params,
+              age_range = list(0,130)
+            )
+            return(userInput)
+          })
+          
+          output$annuityProducts <- renderUI({
+            # Code to generate each of the messageItems here, in a list. This assumes
+            # that messageData is a data frame with two columns, 'from' and 'message'.
+            valueBoxes <- apply(plot_product_info(setup_plot_annuityUI(),'annuityTable'), 1, function(row) {
+              valueBox(
+                value = withMathJax(row[["value"]]),
+                subtitle = row[["label"]],
+                width=4
+              )
+            })
+            
+            # Create a tagList to hold the value boxes
+            tagList(valueBoxes)
+          })
+          
+          output$output_wholeAnnuity_plot <- renderPlot({
+            plot_product_info(setup_plot_annuityUI(),'wholeAnnuity')
+          })  
+          
+          
+          output$output_termAnnuity_plot <- renderPlot({
+            plot_product_info(setup_plot_annuityUI(),'termAnnuity')
+          })
+
+          
+        } else {
+          
+          output$annuityProducts <- renderUI({
+            NULL
+          })
+          
+          output$output_wholeAnnuity_plot <- renderPlot({
+            NULL
+          })  
+          
+          output$output_termAnnuity_plot <- renderPlot({
+            NULL
+          })
+        }
+      }) 
+  
 }
 
-#launch app
+#---------------------------------------------launch app---------------------------------------------
 shinyApp(ui, server)
